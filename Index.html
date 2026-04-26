@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly To-Do</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #111;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #app { display: flex; flex-direction: column; height: 100vh; padding: 16px; gap: 12px; }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .top-bar h1 { font-size: 22px; font-weight: 700; }
+
+        .top-bar-right { display: flex; gap: 8px; }
+
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            padding: 7px 14px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .btn-secondary {
+            background: #2a2a2a;
+            color: #aaa;
+        }
+
+        .btn-secondary:hover { background: #333; color: #fff; }
+
+        .btn-primary {
+            background: #7c3aed;
+            color: #fff;
+        }
+
+        .btn-primary:hover { background: #6d28d9; }
+
+        .week-nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .week-nav span {
+            font-size: 13px;
+            color: #aaa;
+            min-width: 160px;
+            text-align: center;
+        }
+
+        .board {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .day-col {
+            min-width: 200px;
+            max-width: 240px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #181818;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 10px;
+            gap: 8px;
+        }
+
+        .day-col.today {
+            background: #1b1b2e;
+            border-color: #7c3aed;
+        }
+
+        .day-col.inactive { opacity: 0.4; }
+
+        .day-header {
+            text-align: center;
+            font-weight: 600;
+            font-size: 13px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #2a2a2a;
+            color: #bbb;
+        }
+
+        .day-col.today .day-header { color: #fff; }
+
+        .task-count {
+            font-size: 11px;
+            color: #555;
+            font-weight: 400;
+        }
+
+        .tasks {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .task-card {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 8px 10px;
+            border-left: 3px solid #555;
+            cursor: grab;
+            transition: opacity 0.2s;
+        }
+
+        .task-card.priority-High { border-left-color: #e74c3c; }
+        .task-card.priority-Medium { border-left-color: #f39c12; }
+        .task-card.priority-Low { border-left-color: #27ae60; }
+        .task-card.completed { opacity: 0.5; }
+
+        .task-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .task-top input[type=checkbox] {
+            margin-top: 3px;
+            accent-color: #7c3aed;
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .task-title {
+            flex: 1;
+            font-size: 13px;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .task-title.done {
+            text-decoration: line-through;
+            color: #666;
+        }
+
+        .task-notes {
+            font-size: 11px;
+            color: #888;
+            margin-top: 4px;
+            padding-left: 22px;
+            word-break: break-word;
+        }
+
+        .task-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .task-actions button {
+            padding: 2px 8px;
+            font-size: 11px;
+            background: transparent;
+            color: #666;
+            border: none;
+        }
+
+        .task-actions button:hover { color: #fff; }
+
+        .add-task-btn {
+            width: 100%;
+            background: #222;
+            color: #666;
+            padding: 6px;
+            font-size: 12px;
+            border-radius: 4px;
+            border: 1px dashed #333;
+        }
+
+        .add-task-btn:hover { background: #2a2a2a; color: #aaa; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal {
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 24px;
+            width: 380px;
+            max-width: 95vw;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .modal h2 { font-size: 16px; }
+
+        .modal label {
+            font-size: 12px;
+            color: #aaa;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .modal input, .modal textarea, .modal select {
+            width: 100%;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #fff;
+            padding: 8px 10px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .modal textarea { resize: vertical; min-height: 70px; }
+
+        .modal-btns {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .hidden { display: none; }
+
+        /* Morning prompt */
+        .morning-card {
+            background: #1b1b2e;
+            border: 1px solid #7c3aed;
+            border-radius: 8px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .morning-card p { font-size: 13px; color: #ccc; }
+        .morning-card strong { color: #fff; }
+
+        .morning-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="top-bar">
+        <h1>Weekly To-Do</h1>
+        <div class="top-bar-right">
+            <div class="week-nav">
+                <button class="btn-secondary" onclick="changeWeek(-1)">← Prev</button>
+                <span id="week-label"></span>
+                <button class="btn-secondary" onclick="changeWeek(1)">Next →</button>
+            </div>
+            <button class="btn-secondary" onclick="openSettings()">⚙ Settings</button>
+        </div>
+    </div>
+
+    <div id="morning-prompt" class="hidden"></div>
+
+    <div class="board" id="board"></div>
+</div>
+
+<!-- Task Modal -->
+<div id="task-modal" class="modal-overlay hidden">
+    <div class="modal">
+        <h2 id="modal-title">Add Task</h2>
+        <div>
+            <label>Title</label>
+            <input type="text" id="task-title-input" placeholder="Task title..." />
+        </div>
+        <div>
+            <label>Notes</label>
+            <textarea id="task-notes-input" placeholder="Notes (optional)..."></textarea>
+        </div>
+        <div>
+            <label>Priority</label>
+            <select id="task-priority-input">
+                <option>High</option>
+                <option selected>Medium</option>
+                <option>Low</option>
+            </select>
+        </div>
+        <div class="modal-btns">
+            <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn-primary" onclick="saveTask()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal">
+        <h2>Settings</h2>
+        <div>
+            <label>
+                <input type="checkbox" id="weekends-toggle" style="width:auto; margin-right:8px;">
+                Show weekends as active days
+            </label>
+        </div>
+        <div class="modal-btns">
+            <button class="btn-secondary" onclick="closeSettings()">Cancel</button>
+            <button class="btn-primary" onclick="saveSettings()">Save</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SUPABASE_URL = 'https://xcjxybjvdamchmcmjrpp.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_LPk5wpyFCGlDZxwHvS6kZw_8WCrAXeR';
+
+    let weekOffset = 0;
+    let tasks = [];
+    let settings = { weekends_active: false };
+    let editingTaskId = null;
+    let addingToDay = null;
+    let dragTaskId = null;
+
+    // ── Supabase helpers ──────────────────────────────────────────────────────
+
+    async function sbFetch(path, method = 'GET', body = null, extra = {}) {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+            method,
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal',
+                ...extra
+            },
+            body: body ? JSON.stringify(body) : null
+        });
+        if (res.status === 204 || res.status === 200 && method !== 'GET') return null;
+        return res.json();
+    }
+
+    async function loadTasks() {
+        const days = getWeekDays().map(d => d.iso);
+        const q = days.map(d => `day=eq.${d}`).join(',');
+        tasks = await sbFetch(`tasks?or=(${q})&order=completed.asc,position.asc`) || [];
+    }
+
+    async function loadSettings() {
+        const rows = await sbFetch('settings?select=key,value') || [];
+        rows.forEach(r => {
+            if (r.key === 'weekends_active') settings.weekends_active = r.value === '1';
+        });
+    }
+
+    async function saveSetting(key, value) {
+        await sbFetch('settings?key=eq.' + key, 'PATCH', { value });
+    }
+
+    async function createTask(data) {
+        const maxPos = tasks.filter(t => t.day === data.day).length;
+        await sbFetch('tasks', 'POST', { ...data, position: maxPos, completed: false });
+    }
+
+    async function updateTask(id, data) {
+        await sbFetch(`tasks?id=eq.${id}`, 'PATCH', data);
+    }
+
+    async function deleteTask(id) {
+        await sbFetch(`tasks?id=eq.${id}`, 'DELETE');
+    }
+
+    // ── Date helpers ──────────────────────────────────────────────────────────
+
+    function getWeekDays() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - today.getDay() + 1 + weekOffset * 7);
+        return Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + i);
+            return {
+                iso: d.toISOString().split('T')[0],
+                label: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+                isToday: d.toISOString().split('T')[0] === today.toISOString().split('T')[0],
+                isWeekend: d.getDay() === 0 || d.getDay() === 6
+            };
+        });
+    }
+
+    function getWeekLabel() {
+        const days = getWeekDays();
+        return `${days[0].label} – ${days[6].label}`;
+    }
+
+    function yesterday() {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        return d.toISOString().split('T')[0];
+    }
+
+    function todayIso() {
+        return new Date().toISOString().split('T')[0];
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────────
+
+    function render() {
+        document.getElementById('week-label').textContent = getWeekLabel();
+        renderMorningPrompt();
+        renderBoard();
+    }
+
+    function renderBoard() {
+        const board = document.getElementById('board');
+        board.innerHTML = '';
+        const days = getWeekDays();
+
+        days.forEach(day => {
+            const active = !day.isWeekend || settings.weekends_active;
+            const dayTasks = tasks.filter(t => t.day === day.iso);
+            const incomplete = dayTasks.filter(t => !t.completed).length;
+
+            const col = document.createElement('div');
+            col.className = `day-col${day.isToday ? ' today' : ''}${!active ? ' inactive' : ''}`;
+            col.dataset.day = day.iso;
+
+            col.addEventListener('dragover', e => e.preventDefault());
+            col.addEventListener('drop', async e => {
+                e.preventDefault();
+                if (dragTaskId && dragTaskId !== day.iso) {
+                    await updateTask(dragTaskId, { day: day.iso, completed: false });
+                    await refresh();
+                }
+            });
+
+            col.innerHTML = `
+                <div class="day-header">
+                    ${day.label}
+                    <span class="task-count">${incomplete > 0 ? `· ${incomplete} left` : ''}</span>
+                </div>
+                <div class="tasks" id="tasks-${day.iso}">
+                    ${dayTasks.map(t => renderTask(t)).join('')}
+                </div>
+                ${active ? `<button class="add-task-btn" onclick="openAddTask('${day.iso}')">+ Add Task</button>` : ''}
+            `;
+            board.appendChild(col);
+        });
+    }
+
+    function renderTask(t) {
+        return `
+            <div class="task-card priority-${t.priority}${t.completed ? ' completed' : ''}"
+                 draggable="true"
+                 ondragstart="dragTaskId='${t.id}'"
+                 ondragend="dragTaskId=null">
+                <div class="task-top">
+                    <input type="checkbox" ${t.completed ? 'checked' : ''}
+                           onchange="toggleTask('${t.id}', this.checked)">
+                    <div class="task-title${t.completed ? ' done' : ''}">${escHtml(t.title)}</div>
+                </div>
+                ${t.notes ? `<div class="task-notes">${escHtml(t.notes)}</div>` : ''}
+                <div class="task-actions">
+                    <button onclick="openEditTask('${t.id}')">✎ Edit</button>
+                    <button onclick="confirmDelete('${t.id}')">✕ Delete</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderMorningPrompt() {
+        const el = document.getElementById('morning-prompt');
+        if (weekOffset !== 0) { el.classList.add('hidden'); return; }
+        const yest = yesterday();
+        const unfinished = tasks.filter(t => t.day === yest && !t.completed);
+        if (!unfinished.length) { el.classList.add('hidden'); return; }
+
+        el.classList.remove('hidden');
+        el.innerHTML = `
+            <div class="morning-card">
+                <p><strong>${unfinished.length} unfinished task(s)</strong> from yesterday</p>
+                <div class="morning-btns">
+                    <button class="btn-primary" onclick="moveYesterdayTasks()">Move to Today</button>
+                    <button class="btn-secondary" onclick="completeYesterdayTasks()">Mark Complete</button>
+                    <button class="btn-secondary" onclick="document.getElementById('morning-prompt').classList.add('hidden')">Dismiss</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function escHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Actions ───────────────────────────────────────────────────────────────
+
+    async function toggleTask(id, checked) {
+        await updateTask(id, { completed: checked });
+        await refresh();
+    }
+
+    async function confirmDelete(id) {
+        if (confirm('Delete this task?')) {
+            await deleteTask(id);
+            await refresh();
+        }
+    }
+
+    async function moveYesterdayTasks() {
+        const yest = yesterday();
+        const today = todayIso();
+        const unfinished = tasks.filter(t => t.day === yest && !t.completed);
+        await Promise.all(unfinished.map(t => updateTask(t.id, { day: today, completed: false })));
+        await refresh();
+    }
+
+    async function completeYesterdayTasks() {
+        const yest = yesterday();
+        const unfinished = tasks.filter(t => t.day === yest && !t.completed);
+        await Promise.all(unfinished.map(t => updateTask(t.id, { completed: true })));
+        await refresh();
+    }
+
+    async function changeWeek(dir) {
+        weekOffset += dir;
+        await refresh();
+    }
+
+    // ── Modal ─────────────────────────────────────────────────────────────────
+
+    function openAddTask(day) {
+        editingTaskId = null;
+        addingToDay = day;
+        document.getElementById('modal-title').textContent = 'Add Task';
+        document.getElementById('task-title-input').value = '';
+        document.getElementById('task-notes-input').value = '';
+        document.getElementById('task-priority-input').value = 'Medium';
+        document.getElementById('task-modal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('task-title-input').focus(), 50);
+    }
+
+    function openEditTask(id) {
+        const t = tasks.find(t => t.id === id);
+        if (!t) return;
+        editingTaskId = id;
+        document.getElementById('modal-title').textContent = 'Edit Task';
+        document.getElementById('task-title-input').value = t.title;
+        document.getElementById('task-notes-input').value = t.notes || '';
+        document.getElementById('task-priority-input').value = t.priority;
+        document.getElementById('task-modal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('task-title-input').focus(), 50);
+    }
+
+    function closeModal() {
+        document.getElementById('task-modal').classList.add('hidden');
+    }
+
+    async function saveTask() {
+        const title = document.getElementById('task-title-input').value.trim();
+        if (!title) return;
+        const data = {
+            title,
+            notes: document.getElementById('task-notes-input').value.trim(),
+            priority: document.getElementById('task-priority-input').value
+        };
+        if (editingTaskId) {
+            await updateTask(editingTaskId, data);
+        } else {
+            await createTask({ ...data, day: addingToDay });
+        }
+        closeModal();
+        await refresh();
+    }
+
+    // ── Settings ──────────────────────────────────────────────────────────────
+
+    function openSettings() {
+        document.getElementById('weekends-toggle').checked = settings.weekends_active;
+        document.getElementById('settings-modal').classList.remove('hidden');
+    }
+
+    function closeSettings() {
+        document.getElementById('settings-modal').classList.add('hidden');
+    }
+
+    async function saveSettings() {
+        settings.weekends_active = document.getElementById('weekends-toggle').checked;
+        await saveSetting('weekends_active', settings.weekends_active ? '1' : '0');
+        closeSettings();
+        render();
+    }
+
+    // ── Keyboard shortcuts ────────────────────────────────────────────────────
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { closeModal(); closeSettings(); }
+        if (e.key === 'Enter' && !document.getElementById('task-modal').classList.contains('hidden')) {
+            if (document.activeElement.tagName !== 'TEXTAREA') saveTask();
+        }
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+
+    async function refresh() {
+        await loadTasks();
+        render();
+    }
+
+    async function init() {
+        await loadSettings();
+        await refresh();
+    }
+
+    init();
+</script>
+</body>
+</html>
