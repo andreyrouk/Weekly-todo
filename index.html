@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weekly To-Do</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -19,7 +20,105 @@
 
         body.light { background: #f5f5f5; color: #111; }
 
-        #app { display: flex; flex-direction: column; height: 100vh; padding: 16px; gap: 12px; }
+        /* ── Auth Screen ── */
+        #auth-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .auth-box {
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 36px;
+            width: 380px;
+            max-width: 95vw;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        body.light .auth-box { background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,0.1); }
+
+        .auth-box h1 { font-size: 22px; text-align: center; margin-bottom: 4px; }
+        .auth-box p { font-size: 13px; color: #888; text-align: center; }
+
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #555;
+            font-size: 12px;
+        }
+
+        .auth-divider::before, .auth-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #333;
+        }
+
+        body.light .auth-divider::before,
+        body.light .auth-divider::after { background: #ddd; }
+
+        .auth-input {
+            width: 100%;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #fff;
+            padding: 10px 12px;
+            font-size: 13px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        body.light .auth-input { background: #f0f0f0; color: #111; border-color: #ddd; }
+        .auth-input:focus { border-color: #7c3aed; }
+
+        .btn-google {
+            width: 100%;
+            background: #fff;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-google:hover { background: #f5f5f5; }
+
+        .auth-switch { font-size: 13px; text-align: center; color: #888; }
+        .auth-switch a { color: #7c3aed; cursor: pointer; text-decoration: none; }
+        .auth-switch a:hover { text-decoration: underline; }
+
+        .auth-error {
+            background: #2d1a1a;
+            border: 1px solid #e74c3c;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #e74c3c;
+            display: none;
+        }
+
+        /* ── App ── */
+        #app {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+            padding: 16px;
+            gap: 12px;
+        }
+
+        #app.visible { display: flex; }
 
         .top-bar {
             display: flex;
@@ -59,14 +158,12 @@
         .btn-secondary:hover { background: #333; color: #fff; }
         .btn-primary { background: #7c3aed; color: #fff; }
         .btn-primary:hover { background: #6d28d9; }
-
         body.light .btn-secondary { background: #e5e5e5; color: #333; }
 
         .week-nav { display: flex; align-items: center; gap: 8px; }
         .week-nav span { font-size: 13px; color: #aaa; min-width: 170px; text-align: center; }
         body.light .week-nav span { color: #555; }
 
-        /* ── Board ── */
         .board {
             display: flex;
             gap: 8px;
@@ -90,7 +187,6 @@
 
         .day-col.today { background: #1b1b2e; border-color: #7c3aed; }
         .day-col.inactive { opacity: 0.4; }
-
         body.light .day-col { background: #fff; border-color: #ddd; }
         body.light .day-col.today { background: #f0ebff; border-color: #7c3aed; }
 
@@ -129,7 +225,6 @@
         .task-card.priority-Medium { border-left-color: #f39c12; }
         .task-card.priority-Low { border-left-color: #27ae60; }
         .task-card.completed { opacity: 0.5; }
-
         body.light .task-card { background: #f9f9f9; }
 
         .task-top { display: flex; align-items: flex-start; gap: 8px; }
@@ -145,9 +240,7 @@
 
         .task-title { flex: 1; font-size: 13px; line-height: 1.4; word-break: break-word; }
         .task-title.done { text-decoration: line-through; color: #666; }
-
         .task-notes { font-size: 11px; color: #888; margin-top: 4px; padding-left: 22px; word-break: break-word; }
-
         .task-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
         .task-actions button { padding: 2px 8px; font-size: 11px; background: transparent; color: #666; border: none; }
         .task-actions button:hover { color: #fff; }
@@ -166,14 +259,8 @@
         .add-task-btn:hover { background: #2a2a2a; color: #aaa; }
         body.light .add-task-btn { background: #f0f0f0; color: #999; border-color: #ddd; }
 
-        /* ── Notes Panel ── */
-        #notes-panel {
-            flex: 1;
-            display: none;
-            gap: 12px;
-            overflow: hidden;
-        }
-
+        /* ── Notes ── */
+        #notes-panel { flex: 1; display: none; gap: 12px; overflow: hidden; }
         #notes-panel.active { display: flex; }
 
         .notes-list {
@@ -197,20 +284,11 @@
         .note-item.selected { border-left-color: #7c3aed; background: #1b1b2e; }
         .note-item-title { font-size: 13px; font-weight: 600; }
         .note-item-date { font-size: 11px; color: #666; margin-top: 2px; }
-
         body.light .note-item { background: #f0f0f0; }
         body.light .note-item.selected { background: #f0ebff; }
 
-        .note-editor {
-            flex: 1;
-            display: none;
-            flex-direction: column;
-            gap: 8px;
-            overflow: hidden;
-        }
-
+        .note-editor { flex: 1; display: none; flex-direction: column; gap: 8px; overflow: hidden; }
         .note-editor.visible { display: flex; }
-
         .note-editor-header { display: flex; align-items: center; gap: 8px; }
 
         .note-editor-header input[type=text] {
@@ -236,11 +314,7 @@
         }
 
         body.light .note-editor-header input[type=text],
-        body.light .note-editor-header input[type=date] {
-            background: #f0f0f0;
-            color: #111;
-            border-color: #ddd;
-        }
+        body.light .note-editor-header input[type=date] { background: #f0f0f0; color: #111; border-color: #ddd; }
 
         #note-content {
             flex: 1;
@@ -259,7 +333,6 @@
 
         body.light #note-content { background: #f9f9f9; color: #111; border-color: #ddd; }
 
-        /* ── Selection Popup ── */
         .selection-popup {
             position: fixed;
             background: #7c3aed;
@@ -299,9 +372,7 @@
         }
 
         body.light .modal { background: #fff; color: #111; }
-
         .modal h2 { font-size: 16px; }
-
         .modal label { font-size: 12px; color: #aaa; display: block; margin-bottom: 4px; }
         body.light .modal label { color: #666; }
 
@@ -319,18 +390,12 @@
 
         body.light .modal input,
         body.light .modal textarea,
-        body.light .modal select {
-            background: #f0f0f0;
-            color: #111;
-            border-color: #ddd;
-        }
+        body.light .modal select { background: #f0f0f0; color: #111; border-color: #ddd; }
 
         .modal textarea { resize: vertical; min-height: 70px; }
         .modal-btns { display: flex; justify-content: flex-end; gap: 8px; }
-
         .hidden { display: none !important; }
 
-        /* ── Morning Prompt ── */
         .morning-card {
             background: #1b1b2e;
             border: 1px solid #7c3aed;
@@ -345,15 +410,55 @@
         }
 
         body.light .morning-card { background: #f0ebff; }
-
         .morning-card p { font-size: 13px; color: #ccc; }
         body.light .morning-card p { color: #555; }
         .morning-card strong { color: #fff; }
         body.light .morning-card strong { color: #111; }
         .morning-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+        .user-info { font-size: 12px; color: #666; }
     </style>
 </head>
 <body>
+
+<!-- Auth Screen -->
+<div id="auth-screen">
+    <div class="auth-box">
+        <h1>✅ Weekly To-Do</h1>
+        <p id="auth-subtitle">Sign in to your account</p>
+
+        <div class="auth-error" id="auth-error"></div>
+
+        <button class="btn-google" onclick="signInWithGoogle()">
+            <svg width="16" height="16" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Continue with Google
+        </button>
+
+        <div class="auth-divider">or</div>
+
+        <div>
+            <label style="font-size:12px; color:#aaa; display:block; margin-bottom:4px;">Email</label>
+            <input type="email" id="auth-email" class="auth-input" placeholder="you@example.com">
+        </div>
+        <div>
+            <label style="font-size:12px; color:#aaa; display:block; margin-bottom:4px;">Password</label>
+            <input type="password" id="auth-password" class="auth-input" placeholder="Password">
+        </div>
+
+        <button class="btn-primary" style="width:100%; padding:10px;" onclick="handleAuth()">Sign In</button>
+
+        <div class="auth-switch">
+            <span id="auth-switch-text">Don't have an account?</span>
+            <a onclick="toggleAuthMode()">Sign up</a>
+        </div>
+    </div>
+</div>
+
+<!-- Main App -->
 <div id="app">
     <div class="top-bar">
         <div class="tab-bar">
@@ -366,8 +471,10 @@
                 <span id="week-label"></span>
                 <button class="btn-secondary" onclick="changeWeek(1)">Next →</button>
             </div>
+            <span class="user-info" id="user-email-display"></span>
             <button class="btn-secondary" id="theme-btn" onclick="toggleTheme()">☀ Light</button>
             <button class="btn-secondary" onclick="openSettings()">⚙ Settings</button>
+            <button class="btn-secondary" onclick="signOut()">Sign Out</button>
         </div>
     </div>
 
@@ -396,7 +503,7 @@
         <h2 id="modal-title">Add Task</h2>
         <div>
             <label>Title</label>
-            <input type="text" id="task-title-input" placeholder="Task title..." />
+            <input type="text" id="task-title-input" placeholder="Task title...">
         </div>
         <div>
             <label>Notes</label>
@@ -435,17 +542,19 @@
 </div>
 
 <!-- Selection Popup -->
-<div class="selection-popup" id="selection-popup" onclick="selectionToTask()">
-    ➕ Turn into task
-</div>
+<div class="selection-popup" id="selection-popup" onclick="selectionToTask()">➕ Turn into task</div>
 
 <script>
     const SUPABASE_URL = 'https://xcjxybjvdamchmcmjrpp.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhjanh5Ymp2ZGFtY2htY21qcnBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMzc0OTgsImV4cCI6MjA5MjgxMzQ5OH0.nIyKBa5c23ImVIzKm9cNUqHAMG2gQdTLUUEz1U6yVaA';
 
-    let weekOffset  = 0;
-    let tasks       = [];
-    let settings    = { weekends_active: false };
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let currentUser   = null;
+    let weekOffset    = 0;
+    let tasks         = [];
+    let settings      = { weekends_active: false };
     let editingTaskId = null;
     let addingToDay   = null;
     let dragTaskId    = null;
@@ -453,80 +562,134 @@
     let activeNoteId  = null;
     let autoSaveTimer = null;
     let selectedText  = '';
-    let currentTab    = 'tasks';
+    let authMode      = 'signin';
 
-    // ── Supabase ──────────────────────────────────────────────────────────────
+    // ── Auth ──────────────────────────────────────────────────────────────────
 
-    async function sbFetch(path, method = 'GET', body = null) {
-        const headers = {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal'
-        };
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : null
-        });
-        if (res.status === 204) return null;
-        const data = await res.json();
-        return data;
+    function toggleAuthMode() {
+        authMode = authMode === 'signin' ? 'signup' : 'signin';
+        const isSignup = authMode === 'signup';
+        document.getElementById('auth-subtitle').textContent = isSignup ? 'Create your account' : 'Sign in to your account';
+        document.querySelector('#auth-screen .btn-primary').textContent = isSignup ? 'Sign Up' : 'Sign In';
+        document.getElementById('auth-switch-text').textContent = isSignup ? 'Already have an account?' : "Don't have an account?";
+        document.querySelector('.auth-switch a').textContent = isSignup ? 'Sign in' : 'Sign up';
+        showAuthError('');
     }
 
-    // ── Tasks DB ──────────────────────────────────────────────────────────────
+    function showAuthError(msg) {
+        const el = document.getElementById('auth-error');
+        el.textContent = msg;
+        el.style.display = msg ? 'block' : 'none';
+    }
+
+    async function handleAuth() {
+        const email = document.getElementById('auth-email').value.trim();
+        const password = document.getElementById('auth-password').value;
+        if (!email || !password) { showAuthError('Please enter email and password.'); return; }
+        if (authMode === 'signup') {
+            const { error } = await sb.auth.signUp({ email, password });
+            if (error) { showAuthError(error.message); return; }
+            showAuthError('Check your email to confirm your account, then sign in.');
+        } else {
+            const { error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) { showAuthError(error.message); return; }
+        }
+    }
+
+    async function signInWithGoogle() {
+        const { error } = await sb.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.href }
+        });
+        if (error) showAuthError(error.message);
+    }
+
+    async function signOut() {
+        await sb.auth.signOut();
+    }
+
+    sb.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+            currentUser = session.user;
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('app').classList.add('visible');
+            const email = currentUser.email || '';
+            document.getElementById('user-email-display').textContent = email.split('@')[0];
+            applyTheme();
+            await loadSettings();
+            await refresh();
+        } else {
+            currentUser = null;
+            document.getElementById('app').classList.remove('visible');
+            document.getElementById('auth-screen').style.display = 'flex';
+            tasks = []; notes = [];
+        }
+    });
+
+    // ── Tasks ─────────────────────────────────────────────────────────────────
 
     async function loadTasks() {
         const days = getWeekDays().map(d => d.iso);
-        const inList = days.join(',');
-        const result = await sbFetch(`tasks?day=in.(${inList})&order=completed.asc,position.asc`);
-        tasks = Array.isArray(result) ? result : [];
+        const { data } = await sb.from('tasks')
+            .select('*')
+            .in('day', days)
+            .eq('user_id', currentUser.id)
+            .order('completed', { ascending: true })
+            .order('position', { ascending: true });
+        tasks = data || [];
     }
 
     async function loadSettings() {
-        const rows = await sbFetch('settings?select=key,value');
-        if (Array.isArray(rows)) {
-            rows.forEach(r => {
+        const { data } = await sb.from('settings').select('*').eq('user_id', currentUser.id);
+        if (data && data.length) {
+            data.forEach(r => {
                 if (r.key === 'weekends_active') settings.weekends_active = r.value === '1';
             });
+        } else {
+            await sb.from('settings').insert({ key: 'weekends_active', value: '0', user_id: currentUser.id });
         }
     }
 
     async function saveSetting(key, value) {
-        await sbFetch('settings?key=eq.' + key, 'PATCH', { value });
+        const { data } = await sb.from('settings').select('*').eq('user_id', currentUser.id).eq('key', key);
+        if (data && data.length) {
+            await sb.from('settings').update({ value }).eq('user_id', currentUser.id).eq('key', key);
+        } else {
+            await sb.from('settings').insert({ key, value, user_id: currentUser.id });
+        }
     }
 
     async function createTask(data) {
         const maxPos = tasks.filter(t => t.day === data.day).length;
-        await sbFetch('tasks', 'POST', { ...data, position: maxPos, completed: false });
+        await sb.from('tasks').insert({ ...data, position: maxPos, completed: false, user_id: currentUser.id });
     }
 
     async function updateTask(id, data) {
-        await sbFetch(`tasks?id=eq.${id}`, 'PATCH', data);
+        await sb.from('tasks').update(data).eq('id', id).eq('user_id', currentUser.id);
     }
 
     async function deleteTask(id) {
-        await sbFetch(`tasks?id=eq.${id}`, 'DELETE');
+        await sb.from('tasks').delete().eq('id', id).eq('user_id', currentUser.id);
     }
 
-    // ── Notes DB ──────────────────────────────────────────────────────────────
+    // ── Notes ─────────────────────────────────────────────────────────────────
 
     async function loadNotes() {
-        const result = await sbFetch('notes?order=meeting_date.desc');
-        notes = Array.isArray(result) ? result : [];
+        const { data } = await sb.from('notes').select('*').eq('user_id', currentUser.id).order('meeting_date', { ascending: false });
+        notes = data || [];
     }
 
     async function createNote(title, content, date) {
-        const result = await sbFetch('notes', 'POST', { title, content, meeting_date: date });
-        return Array.isArray(result) ? result[0] : null;
+        const { data } = await sb.from('notes').insert({ title, content, meeting_date: date, user_id: currentUser.id }).select();
+        return data ? data[0] : null;
     }
 
     async function updateNote(id, data) {
-        await sbFetch(`notes?id=eq.${id}`, 'PATCH', data);
+        await sb.from('notes').update(data).eq('id', id).eq('user_id', currentUser.id);
     }
 
     async function deleteNoteDb(id) {
-        await sbFetch(`notes?id=eq.${id}`, 'DELETE');
+        await sb.from('notes').delete().eq('id', id).eq('user_id', currentUser.id);
     }
 
     // ── Date helpers ──────────────────────────────────────────────────────────
@@ -536,7 +699,7 @@
         today.setHours(0, 0, 0, 0);
         const monday = new Date(today);
         monday.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1) + weekOffset * 7);
-        const todayIso = today.toISOString().split('T')[0];
+        const todayIsoStr = today.toISOString().split('T')[0];
         return Array.from({ length: 7 }, (_, i) => {
             const d = new Date(monday);
             d.setDate(monday.getDate() + i);
@@ -544,7 +707,7 @@
             return {
                 iso,
                 label: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-                isToday: iso === todayIso,
+                isToday: iso === todayIsoStr,
                 isWeekend: d.getDay() === 0 || d.getDay() === 6
             };
         });
@@ -555,9 +718,7 @@
         return `${days[0].label} – ${days[6].label}`;
     }
 
-    function todayIso() {
-        return new Date().toISOString().split('T')[0];
-    }
+    function todayIso() { return new Date().toISOString().split('T')[0]; }
 
     function yesterdayIso() {
         const d = new Date();
@@ -565,7 +726,7 @@
         return d.toISOString().split('T')[0];
     }
 
-    // ── Render Tasks ──────────────────────────────────────────────────────────
+    // ── Render ────────────────────────────────────────────────────────────────
 
     function render() {
         document.getElementById('week-label').textContent = getWeekLabel();
@@ -598,9 +759,7 @@
                     ${day.label}
                     <span class="task-count">${incomplete > 0 ? `· ${incomplete} left` : ''}</span>
                 </div>
-                <div class="tasks">
-                    ${dayTasks.map(t => renderTask(t)).join('')}
-                </div>
+                <div class="tasks">${dayTasks.map(t => renderTask(t)).join('')}</div>
                 ${active ? `<button class="add-task-btn" onclick="openAddTask('${day.iso}')">+ Add Task</button>` : ''}
             `;
             board.appendChild(col);
@@ -610,12 +769,9 @@
     function renderTask(t) {
         return `
             <div class="task-card priority-${t.priority}${t.completed ? ' completed' : ''}"
-                 draggable="true"
-                 ondragstart="dragTaskId='${t.id}'"
-                 ondragend="dragTaskId=null">
+                 draggable="true" ondragstart="dragTaskId='${t.id}'" ondragend="dragTaskId=null">
                 <div class="task-top">
-                    <input type="checkbox" ${t.completed ? 'checked' : ''}
-                           onchange="toggleTask('${t.id}', this.checked)">
+                    <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.id}', this.checked)">
                     <div class="task-title${t.completed ? ' done' : ''}">${escHtml(t.title)}</div>
                 </div>
                 ${t.notes ? `<div class="task-notes">${escHtml(t.notes)}</div>` : ''}
@@ -623,8 +779,7 @@
                     <button onclick="openEditTask('${t.id}')">✎ Edit</button>
                     <button onclick="confirmDelete('${t.id}')">✕ Delete</button>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
 
     function renderMorningPrompt() {
@@ -641,8 +796,7 @@
                     <button class="btn-secondary" onclick="completeYesterdayTasks()">Mark Complete</button>
                     <button class="btn-secondary" onclick="document.getElementById('morning-prompt').classList.add('hidden')">Dismiss</button>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
 
     function escHtml(str) {
@@ -650,7 +804,7 @@
         return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    // ── Task Actions ──────────────────────────────────────────────────────────
+    // ── Task actions ──────────────────────────────────────────────────────────
 
     async function toggleTask(id, checked) {
         await updateTask(id, { completed: checked });
@@ -658,10 +812,7 @@
     }
 
     async function confirmDelete(id) {
-        if (confirm('Delete this task?')) {
-            await deleteTask(id);
-            await refresh();
-        }
+        if (confirm('Delete this task?')) { await deleteTask(id); await refresh(); }
     }
 
     async function moveYesterdayTasks() {
@@ -676,16 +827,12 @@
         await refresh();
     }
 
-    async function changeWeek(dir) {
-        weekOffset += dir;
-        await refresh();
-    }
+    async function changeWeek(dir) { weekOffset += dir; await refresh(); }
 
-    // ── Task Modal ────────────────────────────────────────────────────────────
+    // ── Task modal ────────────────────────────────────────────────────────────
 
     function openAddTask(day) {
-        editingTaskId = null;
-        addingToDay = day;
+        editingTaskId = null; addingToDay = day;
         document.getElementById('modal-title').textContent = 'Add Task';
         document.getElementById('task-title-input').value = '';
         document.getElementById('task-notes-input').value = '';
@@ -706,9 +853,7 @@
         setTimeout(() => document.getElementById('task-title-input').focus(), 50);
     }
 
-    function closeModal() {
-        document.getElementById('task-modal').classList.add('hidden');
-    }
+    function closeModal() { document.getElementById('task-modal').classList.add('hidden'); }
 
     async function saveTask() {
         const title = document.getElementById('task-title-input').value.trim();
@@ -718,11 +863,8 @@
             notes: document.getElementById('task-notes-input').value.trim(),
             priority: document.getElementById('task-priority-input').value
         };
-        if (editingTaskId) {
-            await updateTask(editingTaskId, data);
-        } else {
-            await createTask({ ...data, day: addingToDay });
-        }
+        if (editingTaskId) { await updateTask(editingTaskId, data); }
+        else { await createTask({ ...data, day: addingToDay }); }
         closeModal();
         await refresh();
     }
@@ -734,15 +876,12 @@
         document.getElementById('settings-modal').classList.remove('hidden');
     }
 
-    function closeSettings() {
-        document.getElementById('settings-modal').classList.add('hidden');
-    }
+    function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
 
     async function saveSettings() {
         settings.weekends_active = document.getElementById('weekends-toggle').checked;
         await saveSetting('weekends_active', settings.weekends_active ? '1' : '0');
-        closeSettings();
-        render();
+        closeSettings(); render();
     }
 
     // ── Theme ─────────────────────────────────────────────────────────────────
@@ -756,7 +895,8 @@
     function applyTheme() {
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.add('light');
-            document.getElementById('theme-btn').textContent = '🌙 Dark';
+            const btn = document.getElementById('theme-btn');
+            if (btn) btn.textContent = '🌙 Dark';
         }
     }
 
@@ -768,10 +908,7 @@
         notes.forEach(n => {
             const item = document.createElement('div');
             item.className = `note-item${n.id === activeNoteId ? ' selected' : ''}`;
-            item.innerHTML = `
-                <div class="note-item-title">${escHtml(n.title)}</div>
-                <div class="note-item-date">${n.meeting_date}</div>
-            `;
+            item.innerHTML = `<div class="note-item-title">${escHtml(n.title)}</div><div class="note-item-date">${n.meeting_date}</div>`;
             item.onclick = () => openNote(n.id);
             list.appendChild(item);
         });
@@ -789,23 +926,16 @@
     }
 
     async function newNote() {
-        const today = todayIso();
-        const result = await createNote('New Meeting', '', today);
-        if (result) {
-            await loadNotes();
-            renderNotes();
-            openNote(result.id);
-        }
+        const result = await createNote('New Meeting', '', todayIso());
+        if (result) { await loadNotes(); renderNotes(); openNote(result.id); }
     }
 
     async function deleteNote() {
-        if (!activeNoteId) return;
-        if (!confirm('Delete this note?')) return;
+        if (!activeNoteId || !confirm('Delete this note?')) return;
         await deleteNoteDb(activeNoteId);
         activeNoteId = null;
         document.getElementById('note-editor').classList.remove('visible');
-        await loadNotes();
-        renderNotes();
+        await loadNotes(); renderNotes();
     }
 
     function autoSaveNote() {
@@ -817,8 +947,7 @@
                 content: document.getElementById('note-content').value,
                 meeting_date: document.getElementById('note-date-input').value
             });
-            await loadNotes();
-            renderNotes();
+            await loadNotes(); renderNotes();
         }, 800);
     }
 
@@ -829,9 +958,7 @@
             const popup = document.getElementById('selection-popup');
             const noteContent = document.getElementById('note-content');
             if (!noteContent) { popup.style.display = 'none'; return; }
-            const start = noteContent.selectionStart;
-            const end = noteContent.selectionEnd;
-            const text = noteContent.value.substring(start, end).trim();
+            const text = noteContent.value.substring(noteContent.selectionStart, noteContent.selectionEnd).trim();
             if (text && document.activeElement === noteContent) {
                 selectedText = text;
                 const rect = noteContent.getBoundingClientRect();
@@ -851,8 +978,7 @@
 
     function selectionToTask() {
         document.getElementById('selection-popup').style.display = 'none';
-        addingToDay = todayIso();
-        editingTaskId = null;
+        addingToDay = todayIso(); editingTaskId = null;
         document.getElementById('modal-title').textContent = 'Add Task from Notes';
         document.getElementById('task-title-input').value = selectedText;
         document.getElementById('task-notes-input').value = '';
@@ -864,26 +990,20 @@
     // ── Tab switching ─────────────────────────────────────────────────────────
 
     async function switchTab(tab) {
-        currentTab = tab;
         document.getElementById('tab-tasks').classList.toggle('active', tab === 'tasks');
         document.getElementById('tab-notes').classList.toggle('active', tab === 'notes');
         document.getElementById('board').style.display = tab === 'tasks' ? 'flex' : 'none';
         document.getElementById('morning-prompt').style.display = tab === 'tasks' ? '' : 'none';
         document.getElementById('week-nav').style.display = tab === 'tasks' ? 'flex' : 'none';
-        const notesPanel = document.getElementById('notes-panel');
-        notesPanel.classList.toggle('active', tab === 'notes');
-        if (tab === 'notes') {
-            await loadNotes();
-            renderNotes();
-        }
+        document.getElementById('notes-panel').classList.toggle('active', tab === 'notes');
+        if (tab === 'notes') { await loadNotes(); renderNotes(); }
     }
 
     // ── Keyboard ──────────────────────────────────────────────────────────────
 
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
-            closeModal();
-            closeSettings();
+            closeModal(); closeSettings();
             document.getElementById('selection-popup').style.display = 'none';
         }
         if (e.key === 'Enter' && !document.getElementById('task-modal').classList.contains('hidden')) {
@@ -893,22 +1013,9 @@
 
     // ── Init ──────────────────────────────────────────────────────────────────
 
-    async function refresh() {
-        await loadTasks();
-        render();
-    }
+    async function refresh() { await loadTasks(); render(); }
 
-    async function init() {
-        applyTheme();
-        try {
-            await loadSettings();
-            await refresh();
-        } catch(e) {
-            document.getElementById('board').innerHTML = `<div style="color:#e74c3c; padding:20px;">Error: ${e.message}</div>`;
-        }
-    }
-
-    init();
+    applyTheme();
 </script>
 </body>
 </html>
