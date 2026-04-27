@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly To-Do</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #111;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        body.light { background: #f5f5f5; color: #111; }
+
+        #app { display: flex; flex-direction: column; height: 100vh; padding: 16px; gap: 12px; }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .tab-bar { display: flex; gap: 4px; }
+
+        .tab-btn {
+            background: transparent;
+            color: #666;
+            border: none;
+            padding: 6px 14px;
+            font-size: 13px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .tab-btn.active { background: #7c3aed; color: #fff; }
+        .tab-btn:hover:not(.active) { background: #2a2a2a; color: #aaa; }
+        body.light .tab-btn:hover:not(.active) { background: #e5e5e5; color: #333; }
+
+        .top-bar-right { display: flex; gap: 8px; align-items: center; }
+
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            padding: 7px 14px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .btn-secondary { background: #2a2a2a; color: #aaa; }
+        .btn-secondary:hover { background: #333; color: #fff; }
+        .btn-primary { background: #7c3aed; color: #fff; }
+        .btn-primary:hover { background: #6d28d9; }
+
+        body.light .btn-secondary { background: #e5e5e5; color: #333; }
+
+        .week-nav { display: flex; align-items: center; gap: 8px; }
+        .week-nav span { font-size: 13px; color: #aaa; min-width: 170px; text-align: center; }
+        body.light .week-nav span { color: #555; }
+
+        /* ── Board ── */
+        .board {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .day-col {
+            min-width: 200px;
+            max-width: 240px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #181818;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 10px;
+            gap: 8px;
+        }
+
+        .day-col.today { background: #1b1b2e; border-color: #7c3aed; }
+        .day-col.inactive { opacity: 0.4; }
+
+        body.light .day-col { background: #fff; border-color: #ddd; }
+        body.light .day-col.today { background: #f0ebff; border-color: #7c3aed; }
+
+        .day-header {
+            text-align: center;
+            font-weight: 600;
+            font-size: 13px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #2a2a2a;
+            color: #bbb;
+        }
+
+        .day-col.today .day-header { color: #fff; }
+        body.light .day-header { border-bottom-color: #eee; color: #555; }
+        body.light .day-col.today .day-header { color: #111; }
+
+        .task-count { font-size: 11px; color: #555; font-weight: 400; }
+
+        .tasks {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .task-card {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 8px 10px;
+            border-left: 3px solid #555;
+            cursor: grab;
+        }
+
+        .task-card.priority-High { border-left-color: #e74c3c; }
+        .task-card.priority-Medium { border-left-color: #f39c12; }
+        .task-card.priority-Low { border-left-color: #27ae60; }
+        .task-card.completed { opacity: 0.5; }
+
+        body.light .task-card { background: #f9f9f9; }
+
+        .task-top { display: flex; align-items: flex-start; gap: 8px; }
+
+        .task-top input[type=checkbox] {
+            margin-top: 3px;
+            accent-color: #7c3aed;
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .task-title { flex: 1; font-size: 13px; line-height: 1.4; word-break: break-word; }
+        .task-title.done { text-decoration: line-through; color: #666; }
+
+        .task-notes { font-size: 11px; color: #888; margin-top: 4px; padding-left: 22px; word-break: break-word; }
+
+        .task-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
+        .task-actions button { padding: 2px 8px; font-size: 11px; background: transparent; color: #666; border: none; }
+        .task-actions button:hover { color: #fff; }
+        body.light .task-actions button:hover { color: #111; }
+
+        .add-task-btn {
+            width: 100%;
+            background: #222;
+            color: #666;
+            padding: 6px;
+            font-size: 12px;
+            border-radius: 4px;
+            border: 1px dashed #333;
+        }
+
+        .add-task-btn:hover { background: #2a2a2a; color: #aaa; }
+        body.light .add-task-btn { background: #f0f0f0; color: #999; border-color: #ddd; }
+
+        /* ── Notes Panel ── */
+        #notes-panel {
+            flex: 1;
+            display: none;
+            gap: 12px;
+            overflow: hidden;
+        }
+
+        #notes-panel.active { display: flex; }
+
+        .notes-list {
+            width: 240px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow-y: auto;
+        }
+
+        .note-item {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 10px 12px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+
+        .note-item:hover { border-left-color: #7c3aed; }
+        .note-item.selected { border-left-color: #7c3aed; background: #1b1b2e; }
+        .note-item-title { font-size: 13px; font-weight: 600; }
+        .note-item-date { font-size: 11px; color: #666; margin-top: 2px; }
+
+        body.light .note-item { background: #f0f0f0; }
+        body.light .note-item.selected { background: #f0ebff; }
+
+        .note-editor {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            overflow: hidden;
+        }
+
+        .note-editor.visible { display: flex; }
+
+        .note-editor-header { display: flex; align-items: center; gap: 8px; }
+
+        .note-editor-header input[type=text] {
+            flex: 1;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #fff;
+            padding: 7px 12px;
+            font-size: 15px;
+            font-weight: 600;
+            outline: none;
+        }
+
+        .note-editor-header input[type=date] {
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #fff;
+            padding: 7px 10px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        body.light .note-editor-header input[type=text],
+        body.light .note-editor-header input[type=date] {
+            background: #f0f0f0;
+            color: #111;
+            border-color: #ddd;
+        }
+
+        #note-content {
+            flex: 1;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #fff;
+            padding: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            overflow-y: auto;
+            font-family: inherit;
+        }
+
+        body.light #note-content { background: #f9f9f9; color: #111; border-color: #ddd; }
+
+        /* ── Selection Popup ── */
+        .selection-popup {
+            position: fixed;
+            background: #7c3aed;
+            color: #fff;
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-size: 12px;
+            cursor: pointer;
+            z-index: 200;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            display: none;
+            white-space: nowrap;
+        }
+
+        .selection-popup:hover { background: #6d28d9; }
+
+        /* ── Modals ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal {
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 24px;
+            width: 380px;
+            max-width: 95vw;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        body.light .modal { background: #fff; color: #111; }
+
+        .modal h2 { font-size: 16px; }
+
+        .modal label { font-size: 12px; color: #aaa; display: block; margin-bottom: 4px; }
+        body.light .modal label { color: #666; }
+
+        .modal input, .modal textarea, .modal select {
+            width: 100%;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #fff;
+            padding: 8px 10px;
+            font-size: 13px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        body.light .modal input,
+        body.light .modal textarea,
+        body.light .modal select {
+            background: #f0f0f0;
+            color: #111;
+            border-color: #ddd;
+        }
+
+        .modal textarea { resize: vertical; min-height: 70px; }
+        .modal-btns { display: flex; justify-content: flex-end; gap: 8px; }
+
+        .hidden { display: none !important; }
+
+        /* ── Morning Prompt ── */
+        .morning-card {
+            background: #1b1b2e;
+            border: 1px solid #7c3aed;
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        body.light .morning-card { background: #f0ebff; }
+
+        .morning-card p { font-size: 13px; color: #ccc; }
+        body.light .morning-card p { color: #555; }
+        .morning-card strong { color: #fff; }
+        body.light .morning-card strong { color: #111; }
+        .morning-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="top-bar">
+        <div class="tab-bar">
+            <button class="tab-btn active" id="tab-tasks" onclick="switchTab('tasks')">📋 Tasks</button>
+            <button class="tab-btn" id="tab-notes" onclick="switchTab('notes')">📝 Meeting Notes</button>
+        </div>
+        <div class="top-bar-right">
+            <div class="week-nav" id="week-nav">
+                <button class="btn-secondary" onclick="changeWeek(-1)">← Prev</button>
+                <span id="week-label"></span>
+                <button class="btn-secondary" onclick="changeWeek(1)">Next →</button>
+            </div>
+            <button class="btn-secondary" id="theme-btn" onclick="toggleTheme()">☀ Light</button>
+            <button class="btn-secondary" onclick="openSettings()">⚙ Settings</button>
+        </div>
+    </div>
+
+    <div id="morning-prompt" class="hidden"></div>
+
+    <div class="board" id="board"></div>
+
+    <div id="notes-panel">
+        <div class="notes-list" id="notes-list">
+            <button class="btn-primary" onclick="newNote()" style="margin-bottom:4px;">+ New Note</button>
+        </div>
+        <div class="note-editor" id="note-editor">
+            <div class="note-editor-header">
+                <input type="text" id="note-title-input" placeholder="Meeting title..." oninput="autoSaveNote()">
+                <input type="date" id="note-date-input" oninput="autoSaveNote()">
+                <button class="btn-secondary" onclick="deleteNote()">Delete</button>
+            </div>
+            <textarea id="note-content" placeholder="Type your meeting notes here...&#10;&#10;Select any text to turn it into a task."></textarea>
+        </div>
+    </div>
+</div>
+
+<!-- Task Modal -->
+<div id="task-modal" class="modal-overlay hidden">
+    <div class="modal">
+        <h2 id="modal-title">Add Task</h2>
+        <div>
+            <label>Title</label>
+            <input type="text" id="task-title-input" placeholder="Task title..." />
+        </div>
+        <div>
+            <label>Notes</label>
+            <textarea id="task-notes-input" placeholder="Notes (optional)..."></textarea>
+        </div>
+        <div>
+            <label>Priority</label>
+            <select id="task-priority-input">
+                <option>High</option>
+                <option selected>Medium</option>
+                <option>Low</option>
+            </select>
+        </div>
+        <div class="modal-btns">
+            <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn-primary" onclick="saveTask()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal">
+        <h2>Settings</h2>
+        <div>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="weekends-toggle" style="width:auto;">
+                Show weekends as active days
+            </label>
+        </div>
+        <div class="modal-btns">
+            <button class="btn-secondary" onclick="closeSettings()">Cancel</button>
+            <button class="btn-primary" onclick="saveSettings()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Selection Popup -->
+<div class="selection-popup" id="selection-popup" onclick="selectionToTask()">
+    ➕ Turn into task
+</div>
+
+<script>
+    const SUPABASE_URL = 'https://xcjxybjvdamchmcmjrpp.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhjanh5Ymp2ZGFtY2htY21qcnBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMzc0OTgsImV4cCI6MjA5MjgxMzQ5OH0.nIyKBa5c23ImVIzKm9cNUqHAMG2gQdTLUUEz1U6yVaA';
+
+    let weekOffset  = 0;
+    let tasks       = [];
+    let settings    = { weekends_active: false };
+    let editingTaskId = null;
+    let addingToDay   = null;
+    let dragTaskId    = null;
+    let notes         = [];
+    let activeNoteId  = null;
+    let autoSaveTimer = null;
+    let selectedText  = '';
+    let currentTab    = 'tasks';
+
+    // ── Supabase ──────────────────────────────────────────────────────────────
+
+    async function sbFetch(path, method = 'GET', body = null) {
+        const headers = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal'
+        };
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : null
+        });
+        if (res.status === 204) return null;
+        const data = await res.json();
+        return data;
+    }
+
+    // ── Tasks DB ──────────────────────────────────────────────────────────────
+
+    async function loadTasks() {
+        const days = getWeekDays().map(d => d.iso);
+        const inList = days.join(',');
+        const result = await sbFetch(`tasks?day=in.(${inList})&order=completed.asc,position.asc`);
+        tasks = Array.isArray(result) ? result : [];
+    }
+
+    async function loadSettings() {
+        const rows = await sbFetch('settings?select=key,value');
+        if (Array.isArray(rows)) {
+            rows.forEach(r => {
+                if (r.key === 'weekends_active') settings.weekends_active = r.value === '1';
+            });
+        }
+    }
+
+    async function saveSetting(key, value) {
+        await sbFetch('settings?key=eq.' + key, 'PATCH', { value });
+    }
+
+    async function createTask(data) {
+        const maxPos = tasks.filter(t => t.day === data.day).length;
+        await sbFetch('tasks', 'POST', { ...data, position: maxPos, completed: false });
+    }
+
+    async function updateTask(id, data) {
+        await sbFetch(`tasks?id=eq.${id}`, 'PATCH', data);
+    }
+
+    async function deleteTask(id) {
+        await sbFetch(`tasks?id=eq.${id}`, 'DELETE');
+    }
+
+    // ── Notes DB ──────────────────────────────────────────────────────────────
+
+    async function loadNotes() {
+        const result = await sbFetch('notes?order=meeting_date.desc');
+        notes = Array.isArray(result) ? result : [];
+    }
+
+    async function createNote(title, content, date) {
+        const result = await sbFetch('notes', 'POST', { title, content, meeting_date: date });
+        return Array.isArray(result) ? result[0] : null;
+    }
+
+    async function updateNote(id, data) {
+        await sbFetch(`notes?id=eq.${id}`, 'PATCH', data);
+    }
+
+    async function deleteNoteDb(id) {
+        await sbFetch(`notes?id=eq.${id}`, 'DELETE');
+    }
+
+    // ── Date helpers ──────────────────────────────────────────────────────────
+
+    function getWeekDays() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1) + weekOffset * 7);
+        const todayIso = today.toISOString().split('T')[0];
+        return Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + i);
+            const iso = d.toISOString().split('T')[0];
+            return {
+                iso,
+                label: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+                isToday: iso === todayIso,
+                isWeekend: d.getDay() === 0 || d.getDay() === 6
+            };
+        });
+    }
+
+    function getWeekLabel() {
+        const days = getWeekDays();
+        return `${days[0].label} – ${days[6].label}`;
+    }
+
+    function todayIso() {
+        return new Date().toISOString().split('T')[0];
+    }
+
+    function yesterdayIso() {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        return d.toISOString().split('T')[0];
+    }
+
+    // ── Render Tasks ──────────────────────────────────────────────────────────
+
+    function render() {
+        document.getElementById('week-label').textContent = getWeekLabel();
+        renderMorningPrompt();
+        renderBoard();
+    }
+
+    function renderBoard() {
+        const board = document.getElementById('board');
+        board.innerHTML = '';
+        getWeekDays().forEach(day => {
+            const active = !day.isWeekend || settings.weekends_active;
+            const dayTasks = tasks.filter(t => t.day === day.iso);
+            const incomplete = dayTasks.filter(t => !t.completed).length;
+
+            const col = document.createElement('div');
+            col.className = `day-col${day.isToday ? ' today' : ''}${!active ? ' inactive' : ''}`;
+            col.dataset.day = day.iso;
+            col.addEventListener('dragover', e => e.preventDefault());
+            col.addEventListener('drop', async e => {
+                e.preventDefault();
+                if (dragTaskId) {
+                    await updateTask(dragTaskId, { day: day.iso, completed: false });
+                    await refresh();
+                }
+            });
+
+            col.innerHTML = `
+                <div class="day-header">
+                    ${day.label}
+                    <span class="task-count">${incomplete > 0 ? `· ${incomplete} left` : ''}</span>
+                </div>
+                <div class="tasks">
+                    ${dayTasks.map(t => renderTask(t)).join('')}
+                </div>
+                ${active ? `<button class="add-task-btn" onclick="openAddTask('${day.iso}')">+ Add Task</button>` : ''}
+            `;
+            board.appendChild(col);
+        });
+    }
+
+    function renderTask(t) {
+        return `
+            <div class="task-card priority-${t.priority}${t.completed ? ' completed' : ''}"
+                 draggable="true"
+                 ondragstart="dragTaskId='${t.id}'"
+                 ondragend="dragTaskId=null">
+                <div class="task-top">
+                    <input type="checkbox" ${t.completed ? 'checked' : ''}
+                           onchange="toggleTask('${t.id}', this.checked)">
+                    <div class="task-title${t.completed ? ' done' : ''}">${escHtml(t.title)}</div>
+                </div>
+                ${t.notes ? `<div class="task-notes">${escHtml(t.notes)}</div>` : ''}
+                <div class="task-actions">
+                    <button onclick="openEditTask('${t.id}')">✎ Edit</button>
+                    <button onclick="confirmDelete('${t.id}')">✕ Delete</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderMorningPrompt() {
+        const el = document.getElementById('morning-prompt');
+        if (weekOffset !== 0) { el.classList.add('hidden'); return; }
+        const unfinished = tasks.filter(t => t.day === yesterdayIso() && !t.completed);
+        if (!unfinished.length) { el.classList.add('hidden'); return; }
+        el.classList.remove('hidden');
+        el.innerHTML = `
+            <div class="morning-card">
+                <p><strong>${unfinished.length} unfinished task(s)</strong> from yesterday</p>
+                <div class="morning-btns">
+                    <button class="btn-primary" onclick="moveYesterdayTasks()">Move to Today</button>
+                    <button class="btn-secondary" onclick="completeYesterdayTasks()">Mark Complete</button>
+                    <button class="btn-secondary" onclick="document.getElementById('morning-prompt').classList.add('hidden')">Dismiss</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function escHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Task Actions ──────────────────────────────────────────────────────────
+
+    async function toggleTask(id, checked) {
+        await updateTask(id, { completed: checked });
+        await refresh();
+    }
+
+    async function confirmDelete(id) {
+        if (confirm('Delete this task?')) {
+            await deleteTask(id);
+            await refresh();
+        }
+    }
+
+    async function moveYesterdayTasks() {
+        const unfinished = tasks.filter(t => t.day === yesterdayIso() && !t.completed);
+        await Promise.all(unfinished.map(t => updateTask(t.id, { day: todayIso(), completed: false })));
+        await refresh();
+    }
+
+    async function completeYesterdayTasks() {
+        const unfinished = tasks.filter(t => t.day === yesterdayIso() && !t.completed);
+        await Promise.all(unfinished.map(t => updateTask(t.id, { completed: true })));
+        await refresh();
+    }
+
+    async function changeWeek(dir) {
+        weekOffset += dir;
+        await refresh();
+    }
+
+    // ── Task Modal ────────────────────────────────────────────────────────────
+
+    function openAddTask(day) {
+        editingTaskId = null;
+        addingToDay = day;
+        document.getElementById('modal-title').textContent = 'Add Task';
+        document.getElementById('task-title-input').value = '';
+        document.getElementById('task-notes-input').value = '';
+        document.getElementById('task-priority-input').value = 'Medium';
+        document.getElementById('task-modal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('task-title-input').focus(), 50);
+    }
+
+    function openEditTask(id) {
+        const t = tasks.find(t => t.id === id);
+        if (!t) return;
+        editingTaskId = id;
+        document.getElementById('modal-title').textContent = 'Edit Task';
+        document.getElementById('task-title-input').value = t.title;
+        document.getElementById('task-notes-input').value = t.notes || '';
+        document.getElementById('task-priority-input').value = t.priority;
+        document.getElementById('task-modal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('task-title-input').focus(), 50);
+    }
+
+    function closeModal() {
+        document.getElementById('task-modal').classList.add('hidden');
+    }
+
+    async function saveTask() {
+        const title = document.getElementById('task-title-input').value.trim();
+        if (!title) return;
+        const data = {
+            title,
+            notes: document.getElementById('task-notes-input').value.trim(),
+            priority: document.getElementById('task-priority-input').value
+        };
+        if (editingTaskId) {
+            await updateTask(editingTaskId, data);
+        } else {
+            await createTask({ ...data, day: addingToDay });
+        }
+        closeModal();
+        await refresh();
+    }
+
+    // ── Settings ──────────────────────────────────────────────────────────────
+
+    function openSettings() {
+        document.getElementById('weekends-toggle').checked = settings.weekends_active;
+        document.getElementById('settings-modal').classList.remove('hidden');
+    }
+
+    function closeSettings() {
+        document.getElementById('settings-modal').classList.add('hidden');
+    }
+
+    async function saveSettings() {
+        settings.weekends_active = document.getElementById('weekends-toggle').checked;
+        await saveSetting('weekends_active', settings.weekends_active ? '1' : '0');
+        closeSettings();
+        render();
+    }
+
+    // ── Theme ─────────────────────────────────────────────────────────────────
+
+    function toggleTheme() {
+        const isLight = document.body.classList.toggle('light');
+        document.getElementById('theme-btn').textContent = isLight ? '🌙 Dark' : '☀ Light';
+        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    }
+
+    function applyTheme() {
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light');
+            document.getElementById('theme-btn').textContent = '🌙 Dark';
+        }
+    }
+
+    // ── Notes ─────────────────────────────────────────────────────────────────
+
+    function renderNotes() {
+        const list = document.getElementById('notes-list');
+        list.innerHTML = '<button class="btn-primary" onclick="newNote()" style="margin-bottom:4px;">+ New Note</button>';
+        notes.forEach(n => {
+            const item = document.createElement('div');
+            item.className = `note-item${n.id === activeNoteId ? ' selected' : ''}`;
+            item.innerHTML = `
+                <div class="note-item-title">${escHtml(n.title)}</div>
+                <div class="note-item-date">${n.meeting_date}</div>
+            `;
+            item.onclick = () => openNote(n.id);
+            list.appendChild(item);
+        });
+    }
+
+    function openNote(id) {
+        activeNoteId = id;
+        const note = notes.find(n => n.id === id);
+        if (!note) return;
+        document.getElementById('note-title-input').value = note.title;
+        document.getElementById('note-date-input').value = note.meeting_date;
+        document.getElementById('note-content').value = note.content || '';
+        document.getElementById('note-editor').classList.add('visible');
+        renderNotes();
+    }
+
+    async function newNote() {
+        const today = todayIso();
+        const result = await createNote('New Meeting', '', today);
+        if (result) {
+            await loadNotes();
+            renderNotes();
+            openNote(result.id);
+        }
+    }
+
+    async function deleteNote() {
+        if (!activeNoteId) return;
+        if (!confirm('Delete this note?')) return;
+        await deleteNoteDb(activeNoteId);
+        activeNoteId = null;
+        document.getElementById('note-editor').classList.remove('visible');
+        await loadNotes();
+        renderNotes();
+    }
+
+    function autoSaveNote() {
+        if (!activeNoteId) return;
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(async () => {
+            await updateNote(activeNoteId, {
+                title: document.getElementById('note-title-input').value,
+                content: document.getElementById('note-content').value,
+                meeting_date: document.getElementById('note-date-input').value
+            });
+            await loadNotes();
+            renderNotes();
+        }, 800);
+    }
+
+    // ── Text selection → task ─────────────────────────────────────────────────
+
+    function handleSelection() {
+        setTimeout(() => {
+            const sel = window.getSelection();
+            const text = sel ? sel.toString().trim() : '';
+            const popup = document.getElementById('selection-popup');
+            const noteContent = document.getElementById('note-content');
+            if (text && noteContent && sel.anchorNode && noteContent.contains(sel.anchorNode)) {
+                selectedText = text;
+                const range = sel.getRangeAt(0).getBoundingClientRect();
+                popup.style.display = 'block';
+                popup.style.top = `${range.top + window.scrollY - 44}px`;
+                popup.style.left = `${range.left + window.scrollX}px`;
+            } else {
+                popup.style.display = 'none';
+                selectedText = '';
+            }
+        }, 10);
+    }
+
+    document.addEventListener('mouseup', handleSelection);
+    document.addEventListener('touchend', handleSelection);
+
+    function selectionToTask() {
+        document.getElementById('selection-popup').style.display = 'none';
+        addingToDay = todayIso();
+        editingTaskId = null;
+        document.getElementById('modal-title').textContent = 'Add Task from Notes';
+        document.getElementById('task-title-input').value = selectedText;
+        document.getElementById('task-notes-input').value = '';
+        document.getElementById('task-priority-input').value = 'Medium';
+        document.getElementById('task-modal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('task-title-input').focus(), 50);
+    }
+
+    // ── Tab switching ─────────────────────────────────────────────────────────
+
+    async function switchTab(tab) {
+        currentTab = tab;
+        document.getElementById('tab-tasks').classList.toggle('active', tab === 'tasks');
+        document.getElementById('tab-notes').classList.toggle('active', tab === 'notes');
+        document.getElementById('board').style.display = tab === 'tasks' ? 'flex' : 'none';
+        document.getElementById('morning-prompt').style.display = tab === 'tasks' ? '' : 'none';
+        document.getElementById('week-nav').style.display = tab === 'tasks' ? 'flex' : 'none';
+        const notesPanel = document.getElementById('notes-panel');
+        notesPanel.classList.toggle('active', tab === 'notes');
+        if (tab === 'notes') {
+            await loadNotes();
+            renderNotes();
+        }
+    }
+
+    // ── Keyboard ──────────────────────────────────────────────────────────────
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeModal();
+            closeSettings();
+            document.getElementById('selection-popup').style.display = 'none';
+        }
+        if (e.key === 'Enter' && !document.getElementById('task-modal').classList.contains('hidden')) {
+            if (document.activeElement.tagName !== 'TEXTAREA') saveTask();
+        }
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+
+    async function refresh() {
+        await loadTasks();
+        render();
+    }
+
+    async function init() {
+        applyTheme();
+        try {
+            await loadSettings();
+            await refresh();
+        } catch(e) {
+            document.getElementById('board').innerHTML = `<div style="color:#e74c3c; padding:20px;">Error: ${e.message}</div>`;
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>
