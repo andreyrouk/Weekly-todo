@@ -620,16 +620,19 @@
     // ── Init ──────────────────────────────────────────────────────────────────
 
     async function refresh() {
-    await loadTasks();
-    render();
+        const days = getWeekDays().map(d => d.iso);
+        const q = days.map(d => `day=eq.${d}`).join(',');
+        const result = await sbFetch(`tasks?or=(${q})&order=completed.asc,position.asc`);
+        tasks = Array.isArray(result) ? result : [];
+        render();
     }
 
     async function init() {
-    try {
-        await loadSettings();
-        await refresh();
-    } catch(e) {
-        document.getElementById('board').innerHTML = `<div style="color:red; padding:20px;">Error: ${e.message}</div>`;
+        try {
+            await loadSettings();
+            await refresh();
+        } catch(e) {
+            document.getElementById('board').innerHTML = `<div style="color:red; padding:20px;">Error: ${e.message}</div>`;
         }
     }
 
