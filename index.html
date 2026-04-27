@@ -620,13 +620,17 @@
     // ── Init ──────────────────────────────────────────────────────────────────
 
     async function refresh() {
-        await loadTasks();
-        render();
+    await loadTasks();
+    render();
     }
 
     async function init() {
+    try {
         await loadSettings();
         await refresh();
+    } catch(e) {
+        document.getElementById('board').innerHTML = `<div style="color:red; padding:20px;">Error: ${e.message}</div>`;
+        }
     }
 
     init();
