@@ -946,6 +946,10 @@
         if (tab === 'notes') {
             await loadNotes();
             renderNotes();
+            // Attach listener once
+            const ta = document.getElementById('note-content');
+            ta.onmouseup = handleSelection;
+            ta.ontouchend = handleSelection;
         }
     }
 
