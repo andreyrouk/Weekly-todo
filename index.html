@@ -836,8 +836,9 @@
                 selectedText = text;
                 const rect = noteContent.getBoundingClientRect();
                 popup.style.display = 'block';
-                popup.style.top = `${rect.top + window.scrollY - 44}px`;
-                popup.style.left = `${rect.left + window.scrollX + 20}px`;
+                popup.style.top = `${rect.top + window.scrollY + 8}px`;
+                popup.style.right = '24px';
+                popup.style.left = 'auto';
             } else {
                 popup.style.display = 'none';
                 selectedText = '';
