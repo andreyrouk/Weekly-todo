@@ -906,11 +906,13 @@
 
     let selectedText = '';
 
-    document.addEventListener('mouseup', () => {
+    function handleSelection() {
+    setTimeout(() => {
         const sel = window.getSelection();
         const text = sel ? sel.toString().trim() : '';
         const popup = document.getElementById('selection-popup');
-        if (text && document.getElementById('note-content').contains(sel.anchorNode)) {
+        const noteContent = document.getElementById('note-content');
+        if (text && noteContent && noteContent.contains(sel.anchorNode)) {
             selectedText = text;
             const range = sel.getRangeAt(0).getBoundingClientRect();
             popup.style.display = 'block';
@@ -919,7 +921,12 @@
         } else {
             popup.style.display = 'none';
             selectedText = '';
-        }
+            }
+        }, 10);
+    }
+
+    document.addEventListener('mouseup', handleSelection);
+    document.addEventListener('touchend', handleSelection);
     });
 
     function selectionToTask() {
@@ -946,12 +953,13 @@
         if (tab === 'notes') {
             await loadNotes();
             renderNotes();
-            // Attach listener once
-            const ta = document.getElementById('note-content');
-            ta.onmouseup = handleSelection;
-            ta.ontouchend = handleSelection;
+            setTimeout(() => {
+                const ta = document.getElementById('note-content');
+                if (ta) {
+                    ta.addEventListener('mouseup', handleSelection);
+                }
+            }, 100);
         }
-    }
 
     init();
 </script>
