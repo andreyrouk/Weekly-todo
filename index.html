@@ -285,126 +285,126 @@
 
         .tab-bar { display: flex; gap: 4px; }
 
-.tab-btn {
-    background: transparent;
-    color: #666;
-    border: none;
-    padding: 6px 14px;
-    font-size: 13px;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-.tab-btn.active {
-    background: #7c3aed;
-    color: #fff;
-}
-
-.tab-btn:hover:not(.active) { background: #2a2a2a; color: #aaa; }
-body.light .tab-btn:hover:not(.active) { background: #e5e5e5; color: #333; }
-
-#notes-panel {
-    flex: 1;
-    display: none;
-    gap: 12px;
-    overflow: hidden;
-}
-
-#notes-panel.active { display: flex; }
-
-.notes-list {
-    width: 260px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    overflow-y: auto;
-}
-
-.note-item {
-    background: #2a2a2a;
-    border-radius: 6px;
-    padding: 10px 12px;
-    cursor: pointer;
-    border-left: 3px solid transparent;
-}
-
-.note-item:hover { border-left-color: #7c3aed; }
-.note-item.active { border-left-color: #7c3aed; background: #1b1b2e; }
-.note-item-title { font-size: 13px; font-weight: 600; }
-.note-item-date { font-size: 11px; color: #666; margin-top: 2px; }
-
-body.light .note-item { background: #f0f0f0; }
-body.light .note-item.active { background: #f0ebff; }
-
-.note-editor {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    overflow: hidden;
-}
-
-.note-editor-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.note-editor-header input {
-    flex: 1;
-    background: #2a2a2a;
-    border: 1px solid #333;
-    border-radius: 6px;
-    color: #fff;
-    padding: 7px 12px;
-    font-size: 15px;
-    font-weight: 600;
-    outline: none;
-}
-
-body.light .note-editor-header input {
-    background: #f0f0f0;
-    color: #111;
-    border-color: #ddd;
-}
-
-.note-editor-header input::placeholder { color: #555; }
-
-#note-content {
-    flex: 1;
-    background: #2a2a2a;
-    border: 1px solid #333;
-    border-radius: 6px;
-    color: #fff;
-    padding: 12px;
-    font-size: 13px;
-    line-height: 1.6;
-    resize: none;
-    outline: none;
-    overflow-y: auto;
-}
-
-body.light #note-content {
-    background: #f9f9f9;
-    color: #111;
-    border-color: #ddd;
-}
-
-.selection-popup {
-    position: fixed;
-    background: #7c3aed;
-    color: #fff;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 12px;
-    cursor: pointer;
-    z-index: 200;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    display: none;
-}
-
-.selection-popup:hover { background: #6d28d9; }
+        .tab-btn {
+            background: transparent;
+            color: #666;
+            border: none;
+            padding: 6px 14px;
+            font-size: 13px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .tab-btn.active {
+            background: #7c3aed;
+            color: #fff;
+        }
+        
+        .tab-btn:hover:not(.active) { background: #2a2a2a; color: #aaa; }
+        body.light .tab-btn:hover:not(.active) { background: #e5e5e5; color: #333; }
+        
+        #notes-panel {
+            flex: 1;
+            display: none;
+            gap: 12px;
+            overflow: hidden;
+        }
+        
+        #notes-panel.active { display: flex; }
+        
+        .notes-list {
+            width: 260px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+        }
+        
+        .note-item {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 10px 12px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+        
+        .note-item:hover { border-left-color: #7c3aed; }
+        .note-item.active { border-left-color: #7c3aed; background: #1b1b2e; }
+        .note-item-title { font-size: 13px; font-weight: 600; }
+        .note-item-date { font-size: 11px; color: #666; margin-top: 2px; }
+        
+        body.light .note-item { background: #f0f0f0; }
+        body.light .note-item.active { background: #f0ebff; }
+        
+        .note-editor {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow: hidden;
+        }
+        
+        .note-editor-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .note-editor-header input {
+            flex: 1;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #fff;
+            padding: 7px 12px;
+            font-size: 15px;
+            font-weight: 600;
+            outline: none;
+        }
+        
+        body.light .note-editor-header input {
+            background: #f0f0f0;
+            color: #111;
+            border-color: #ddd;
+        }
+        
+        .note-editor-header input::placeholder { color: #555; }
+        
+        #note-content {
+            flex: 1;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #fff;
+            padding: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            overflow-y: auto;
+        }
+        
+        body.light #note-content {
+            background: #f9f9f9;
+            color: #111;
+            border-color: #ddd;
+        }
+        
+        .selection-popup {
+            position: fixed;
+            background: #7c3aed;
+            color: #fff;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            z-index: 200;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: none;
+        }
+        
+        .selection-popup:hover { background: #6d28d9; }
     </style>
 </head>
 <body>
@@ -428,6 +428,24 @@ body.light #note-content {
     <div id="morning-prompt" class="hidden"></div>
 
     <div class="board" id="board"></div>
+
+    <div id="notes-panel">
+        <div class="notes-list" id="notes-list">
+            <button class="btn-primary" onclick="newNote()">+ New Note</button>
+        </div>
+        <div class="note-editor" id="note-editor-panel" style="display:none;">
+            <div class="note-editor-header">
+                <input type="text" id="note-title-input" placeholder="Meeting title..." oninput="autoSaveNote()">
+                <input type="date" id="note-date-input" oninput="autoSaveNote()">
+                <button class="btn-secondary" onclick="deleteNote()">Delete</button>
+            </div>
+            <textarea id="note-content" placeholder="Type your meeting notes here... Select any text to turn it into a task." oninput="autoSaveNote()"></textarea>
+        </div>
+    </div>
+    
+    <div class="selection-popup" id="selection-popup" onclick="selectionToTask()">
+        ➕ Turn into task
+    </div>
 </div>
 
 <!-- Task Modal -->
@@ -796,6 +814,138 @@ body.light #note-content {
             await refresh();
         } catch(e) {
             document.getElementById('board').innerHTML = `<div style="color:red; padding:20px;">Error: ${e.message}</div>`;
+        }
+    }
+
+    // ── Notes ─────────────────────────────────────────────────────────────────
+
+    let notes = [];
+    let activeNoteId = null;
+    let autoSaveTimer = null;
+
+    async function loadNotes() {
+        const result = await sbFetch('notes?order=meeting_date.desc');
+        notes = Array.isArray(result) ? result : [];
+    }
+
+    async function saveNewNote(title, content, date) {
+        const result = await sbFetch('notes', 'POST', { title, content, meeting_date: date });
+        return Array.isArray(result) ? result[0] : null;
+    }
+
+    async function updateNote(id, data) {
+        await sbFetch(`notes?id=eq.${id}`, 'PATCH', data);
+    }
+
+    async function deleteNoteDb(id) {
+        await sbFetch(`notes?id=eq.${id}`, 'DELETE');
+    }
+
+    function renderNotes() {
+        const list = document.getElementById('notes-list');
+        list.innerHTML = '<button class="btn-primary" onclick="newNote()" style="margin-bottom:8px;">+ New Note</button>';
+        notes.forEach(n => {
+            const item = document.createElement('div');
+            item.className = `note-item${n.id === activeNoteId ? ' active' : ''}`;
+            item.innerHTML = `
+                <div class="note-item-title">${escHtml(n.title)}</div>
+                <div class="note-item-date">${n.meeting_date}</div>
+            `;
+            item.onclick = () => openNote(n.id);
+            list.appendChild(item);
+        });
+    }
+
+    function openNote(id) {
+        activeNoteId = id;
+        const note = notes.find(n => n.id === id);
+        if (!note) return;
+        document.getElementById('note-editor-panel').style.display = 'flex';
+        document.getElementById('note-editor-panel').style.flexDirection = 'column';
+        document.getElementById('note-title-input').value = note.title;
+        document.getElementById('note-date-input').value = note.meeting_date;
+        document.getElementById('note-content').value = note.content || '';
+        renderNotes();
+    }
+
+    async function newNote() {
+        const today = new Date().toISOString().split('T')[0];
+        const result = await saveNewNote('New Meeting', '', today);
+        if (result) {
+            await loadNotes();
+            renderNotes();
+            openNote(result.id);
+        }
+    }
+
+    async function deleteNote() {
+        if (!activeNoteId) return;
+        if (!confirm('Delete this note?')) return;
+        await deleteNoteDb(activeNoteId);
+        activeNoteId = null;
+        document.getElementById('note-editor-panel').style.display = 'none';
+        await loadNotes();
+        renderNotes();
+    }
+
+    function autoSaveNote() {
+        if (!activeNoteId) return;
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(async () => {
+            await updateNote(activeNoteId, {
+                title: document.getElementById('note-title-input').value,
+                content: document.getElementById('note-content').value,
+                meeting_date: document.getElementById('note-date-input').value
+            });
+            await loadNotes();
+            renderNotes();
+        }, 800);
+    }
+
+    // ── Text selection → task ─────────────────────────────────────────────────
+
+    let selectedText = '';
+
+    document.addEventListener('mouseup', () => {
+        const sel = window.getSelection();
+        const text = sel ? sel.toString().trim() : '';
+        const popup = document.getElementById('selection-popup');
+        if (text && document.getElementById('note-content').contains(sel.anchorNode)) {
+            selectedText = text;
+            const range = sel.getRangeAt(0).getBoundingClientRect();
+            popup.style.display = 'block';
+            popup.style.top = `${range.top + window.scrollY - 40}px`;
+            popup.style.left = `${range.left + window.scrollX}px`;
+        } else {
+            popup.style.display = 'none';
+            selectedText = '';
+        }
+    });
+
+    function selectionToTask() {
+        document.getElementById('selection-popup').style.display = 'none';
+        addingToDay = new Date().toISOString().split('T')[0];
+        editingTaskId = null;
+        document.getElementById('modal-title').textContent = 'Add Task from Notes';
+        document.getElementById('task-title-input').value = selectedText;
+        document.getElementById('task-notes-input').value = '';
+        document.getElementById('task-priority-input').value = 'Medium';
+        document.getElementById('task-modal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('task-title-input').focus(), 50);
+    }
+
+    // ── Tab switching ─────────────────────────────────────────────────────────
+
+    async function switchTab(tab) {
+        document.getElementById('tab-tasks').classList.toggle('active', tab === 'tasks');
+        document.getElementById('tab-notes').classList.toggle('active', tab === 'notes');
+        document.getElementById('board').style.display = tab === 'tasks' ? 'flex' : 'none';
+        const notesPanel = document.getElementById('notes-panel');
+        notesPanel.classList.toggle('active', tab === 'notes');
+
+        if (tab === 'notes') {
+            await loadNotes();
+            renderNotes();
         }
     }
 
