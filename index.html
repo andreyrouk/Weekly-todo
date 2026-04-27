@@ -621,8 +621,8 @@
 
     async function refresh() {
         const days = getWeekDays().map(d => d.iso);
-        const q = days.map(d => `day=eq.${d}`).join(',');
-        const result = await sbFetch(`tasks?or=(${q})&order=completed.asc,position.asc`);
+        const inList = days.join(',');
+        const result = await sbFetch(`tasks?day=in.(${inList})&order=completed.asc,position.asc`);
         tasks = Array.isArray(result) ? result : [];
         render();
     }
