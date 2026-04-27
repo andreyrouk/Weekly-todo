@@ -826,16 +826,18 @@
 
     function handleSelection() {
         setTimeout(() => {
-            const sel = window.getSelection();
-            const text = sel ? sel.toString().trim() : '';
             const popup = document.getElementById('selection-popup');
             const noteContent = document.getElementById('note-content');
-            if (text && noteContent && sel.anchorNode && noteContent.contains(sel.anchorNode)) {
+            if (!noteContent) { popup.style.display = 'none'; return; }
+            const start = noteContent.selectionStart;
+            const end = noteContent.selectionEnd;
+            const text = noteContent.value.substring(start, end).trim();
+            if (text && document.activeElement === noteContent) {
                 selectedText = text;
-                const range = sel.getRangeAt(0).getBoundingClientRect();
+                const rect = noteContent.getBoundingClientRect();
                 popup.style.display = 'block';
-                popup.style.top = `${range.top + window.scrollY - 44}px`;
-                popup.style.left = `${range.left + window.scrollX}px`;
+                popup.style.top = `${rect.top + window.scrollY - 44}px`;
+                popup.style.left = `${rect.left + window.scrollX + 20}px`;
             } else {
                 popup.style.display = 'none';
                 selectedText = '';
