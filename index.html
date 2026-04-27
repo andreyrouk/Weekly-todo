@@ -13,6 +13,12 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             height: 100vh;
             overflow: hidden;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        body.light {
+            background: #f5f5f5;
+            color: #111;
         }
 
         #app { display: flex; flex-direction: column; height: 100vh; padding: 16px; gap: 12px; }
@@ -263,6 +269,18 @@
         .morning-card strong { color: #fff; }
 
         .morning-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        body.light .day-col { background: #fff; border-color: #ddd; }
+        body.light .day-col.today { background: #f0ebff; border-color: #7c3aed; }
+        body.light .task-card { background: #f9f9f9; }
+        body.light .modal { background: #fff; color: #111; }
+        body.light .modal input,
+        body.light .modal textarea,
+        body.light .modal select { background: #f0f0f0; color: #111; border-color: #ddd; }
+        body.light .btn-secondary { background: #e5e5e5; color: #333; }
+        body.light .morning-card { background: #f0ebff; }
+        body.light .add-task-btn { background: #f0f0f0; color: #999; border-color: #ddd; }
+        body.light .top-bar h1 { color: #111; }
     </style>
 </head>
 <body>
@@ -275,6 +293,7 @@
                 <span id="week-label"></span>
                 <button class="btn-secondary" onclick="changeWeek(1)">Next →</button>
             </div>
+            <button class="btn-secondary" id="theme-btn" onclick="toggleTheme()">☀ Light</button>
             <button class="btn-secondary" onclick="openSettings()">⚙ Settings</button>
         </div>
     </div>
@@ -616,6 +635,23 @@
             if (document.activeElement.tagName !== 'TEXTAREA') saveTask();
         }
     });
+
+    // --- Theme toggle --
+
+    function toggleTheme() {
+        const isLight = document.body.classList.toggle('light');
+        document.getElementById('theme-btn').textContent = isLight ? '🌙 Dark' : '☀ Light';
+        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    }
+
+    // Load saved theme
+    if (localStorage.getItem('theme') === 'light') {
+        document.body.classList.add('light');
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('theme-btn');
+            if (btn) btn.textContent = '🌙 Dark';
+        });
+    }
 
     // ── Init ──────────────────────────────────────────────────────────────────
 
