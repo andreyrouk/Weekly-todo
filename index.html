@@ -764,14 +764,14 @@
     function renderBoard() {
         const board = document.getElementById('board');
         board.innerHTML = '';
-        const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 };
+        const priScore = p => p === 'High' ? 1 : p === 'Low' ? 3 : 2;
         getWeekDays().forEach(day => {
             const active = !day.isWeekend || settings.weekends_active;
             const dayTasks = tasks
                 .filter(t => t.day === day.iso)
                 .sort((a, b) => {
                     if (a.completed !== b.completed) return a.completed ? 1 : -1;
-                    return (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1);
+                    return priScore(a.priority) - priScore(b.priority);
                 });
             const incomplete = dayTasks.filter(t => !t.completed).length;
 
