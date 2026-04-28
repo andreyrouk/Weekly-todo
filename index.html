@@ -1022,6 +1022,14 @@
         if (!session) {
             document.getElementById('auth-screen').style.display = 'flex';
             document.getElementById('app').classList.remove('visible');
+        } else {
+            currentUser = session.user;
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('app').classList.add('visible');
+            const email = currentUser.email || '';
+            document.getElementById('user-email-display').textContent = email.split('@')[0];
+            applyTheme();
+            loadSettings().then(() => refresh());
         }
     });
 </script>
