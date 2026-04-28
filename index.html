@@ -729,10 +729,13 @@
     // ── Render ────────────────────────────────────────────────────────────────
 
     function render() {
-        document.getElementById('week-label').textContent = getWeekLabel();
+    document.getElementById('week-label').textContent = getWeekLabel();
+    const isTasksTab = document.getElementById('tab-tasks').classList.contains('active');
+    if (isTasksTab) {
         renderMorningPrompt();
         renderBoard();
     }
+}
 
     function renderBoard() {
         const board = document.getElementById('board');
@@ -993,7 +996,7 @@
         document.getElementById('tab-tasks').classList.toggle('active', tab === 'tasks');
         document.getElementById('tab-notes').classList.toggle('active', tab === 'notes');
         document.getElementById('board').style.display = tab === 'tasks' ? 'flex' : 'none';
-        document.getElementById('morning-prompt').style.display = tab === 'tasks' ? '' : 'none';
+        document.getElementById('morning-prompt').style.display = tab === 'tasks' ? 'block' : 'none';
         document.getElementById('week-nav').style.display = tab === 'tasks' ? 'flex' : 'none';
         document.getElementById('notes-panel').classList.toggle('active', tab === 'notes');
         if (tab === 'notes') { await loadNotes(); renderNotes(); }
