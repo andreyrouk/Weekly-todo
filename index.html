@@ -416,6 +416,25 @@
         body.light .morning-card strong { color: #111; }
         .morning-btns { display: flex; gap: 8px; flex-wrap: wrap; }
         .user-info { font-size: 12px; color: #666; }
+
+        /* ── Mobile ── */
+        @media (max-width: 640px) {
+            body { overflow-y: auto; }
+
+            #app { padding: 10px; gap: 8px; height: auto; min-height: 100vh; }
+
+            .top-bar { flex-wrap: wrap; gap: 6px; }
+            .tab-bar { flex: 1; }
+            .top-bar-right { width: 100%; flex-wrap: wrap; gap: 6px; }
+            .week-nav { width: 100%; justify-content: center; order: -1; }
+
+            .board { overflow-x: auto; }
+            .day-col { min-width: 160px; }
+
+            #notes-panel.active { flex-direction: column; }
+            .notes-list { width: 100%; max-height: 200px; flex-shrink: 0; }
+            .note-editor { min-height: 50vh; }
+        }
     </style>
 </head>
 <body>
@@ -492,7 +511,7 @@
                 <input type="date" id="note-date-input" oninput="autoSaveNote()">
                 <button class="btn-secondary" onclick="deleteNote()">Delete</button>
             </div>
-            <textarea id="note-content" placeholder="Type your meeting notes here...&#10;&#10;Select any text to turn it into a task."></textarea>
+            <textarea id="note-content" placeholder="Type your meeting notes here...&#10;&#10;Select any text to turn it into a task." oninput="autoSaveNote()"></textarea>
         </div>
     </div>
 </div>
@@ -745,9 +764,15 @@
     function renderBoard() {
         const board = document.getElementById('board');
         board.innerHTML = '';
+        const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 };
         getWeekDays().forEach(day => {
             const active = !day.isWeekend || settings.weekends_active;
-            const dayTasks = tasks.filter(t => t.day === day.iso);
+            const dayTasks = tasks
+                .filter(t => t.day === day.iso)
+                .sort((a, b) => {
+                    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                    return (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1);
+                });
             const incomplete = dayTasks.filter(t => !t.completed).length;
 
             const col = document.createElement('div');
