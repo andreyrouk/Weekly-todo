@@ -275,7 +275,7 @@
         .note-item {
             background: #2a2a2a;
             border-radius: 6px;
-            padding: 10px 12px;
+            padding: 14px 12px;
             cursor: pointer;
             border-left: 3px solid transparent;
         }
@@ -283,9 +283,10 @@
         .note-item:hover { border-left-color: #7c3aed; }
         .note-item.selected { border-left-color: #7c3aed; background: #1b1b2e; }
         .note-item-title { font-size: 13px; font-weight: 600; }
-        .note-item-date { font-size: 11px; color: #666; margin-top: 2px; }
+        .note-item-date { font-size: 11px; color: #666; margin-top: 4px; }
         body.light .note-item { background: #f0f0f0; }
         body.light .note-item.selected { background: #f0ebff; }
+        #note-items { display: flex; flex-direction: column; gap: 8px; }
 
         .note-editor { flex: 1; display: none; flex-direction: column; gap: 8px; overflow: hidden; }
         .note-editor.visible { display: flex; }
@@ -545,6 +546,7 @@
                     <span id="note-date-display" class="note-date-display">—</span>
                     <input type="date" id="note-date-input" oninput="autoSaveNote()">
                 </label>
+                <button class="btn-secondary" onclick="closeNote()">✕ Close</button>
                 <button class="btn-secondary" onclick="deleteNote()">Delete</button>
             </div>
             <textarea id="note-content" placeholder="Type your meeting notes here...&#10;&#10;Select any text to turn it into a task." oninput="autoSaveNote()"></textarea>
@@ -1005,6 +1007,12 @@
         document.getElementById('note-date-display').textContent = formatNoteDate(note.meeting_date);
         document.getElementById('note-content').value = note.content || '';
         document.getElementById('note-editor').classList.add('visible');
+        renderNotes();
+    }
+
+    function closeNote() {
+        activeNoteId = null;
+        document.getElementById('note-editor').classList.remove('visible');
         renderNotes();
     }
 
