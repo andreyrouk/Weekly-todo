@@ -349,6 +349,37 @@
 
         .selection-popup:hover { background: #6d28d9; }
 
+        /* ── Note search ── */
+        .note-search-input {
+            width: 100%;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #fff;
+            padding: 7px 10px;
+            font-size: 12px;
+            outline: none;
+            font-family: inherit;
+            flex-shrink: 0;
+        }
+        .note-search-input:focus { border-color: #7c3aed; }
+        body.light .note-search-input { background: #f0f0f0; color: #111; border-color: #ddd; }
+
+        /* ── Note date display (editor header) ── */
+        .note-date-wrapper { position: relative; display: inline-block; cursor: pointer; flex-shrink: 0; }
+        .note-date-wrapper input[type=date] { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+        .note-date-display {
+            display: block;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #aaa;
+            padding: 7px 10px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        body.light .note-date-display { background: #f0f0f0; color: #555; border-color: #ddd; }
+
         /* ── Modals ── */
         .modal-overlay {
             position: fixed;
@@ -504,11 +535,16 @@
     <div id="notes-panel">
         <div class="notes-list" id="notes-list">
             <button class="btn-primary" onclick="newNote()" style="margin-bottom:4px;">+ New Note</button>
+            <input type="text" id="note-search" class="note-search-input" placeholder="Search notes..." oninput="renderNotes()">
+            <div id="note-items"></div>
         </div>
         <div class="note-editor" id="note-editor">
             <div class="note-editor-header">
                 <input type="text" id="note-title-input" placeholder="Meeting title..." oninput="autoSaveNote()">
-                <input type="date" id="note-date-input" oninput="autoSaveNote()">
+                <label class="note-date-wrapper">
+                    <span id="note-date-display" class="note-date-display">—</span>
+                    <input type="date" id="note-date-input" oninput="autoSaveNote()">
+                </label>
                 <button class="btn-secondary" onclick="deleteNote()">Delete</button>
             </div>
             <textarea id="note-content" placeholder="Type your meeting notes here...&#10;&#10;Select any text to turn it into a task." oninput="autoSaveNote()"></textarea>
@@ -935,15 +971,28 @@
 
     // ── Notes ─────────────────────────────────────────────────────────────────
 
+    function formatNoteDate(iso) {
+        if (!iso) return '—';
+        const [y, m, d] = iso.split('-').map(Number);
+        const date = new Date(y, m - 1, d);
+        const day  = date.toLocaleDateString('en-US', { weekday: 'short' });
+        const mon  = date.toLocaleDateString('en-US', { month: 'short' });
+        return `${day} · ${mon} ${d}, ${y}`;
+    }
+
     function renderNotes() {
-        const list = document.getElementById('notes-list');
-        list.innerHTML = '<button class="btn-primary" onclick="newNote()" style="margin-bottom:4px;">+ New Note</button>';
-        notes.forEach(n => {
+        const query = (document.getElementById('note-search')?.value || '').toLowerCase();
+        const visible = query
+            ? notes.filter(n => n.title.toLowerCase().includes(query) || (n.content || '').toLowerCase().includes(query))
+            : notes;
+        const container = document.getElementById('note-items');
+        container.innerHTML = '';
+        visible.forEach(n => {
             const item = document.createElement('div');
             item.className = `note-item${n.id === activeNoteId ? ' selected' : ''}`;
-            item.innerHTML = `<div class="note-item-title">${escHtml(n.title)}</div><div class="note-item-date">${n.meeting_date}</div>`;
+            item.innerHTML = `<div class="note-item-title">${escHtml(n.title)}</div><div class="note-item-date">${formatNoteDate(n.meeting_date)}</div>`;
             item.onclick = () => openNote(n.id);
-            list.appendChild(item);
+            container.appendChild(item);
         });
     }
 
@@ -953,6 +1002,7 @@
         if (!note) return;
         document.getElementById('note-title-input').value = note.title;
         document.getElementById('note-date-input').value = note.meeting_date;
+        document.getElementById('note-date-display').textContent = formatNoteDate(note.meeting_date);
         document.getElementById('note-content').value = note.content || '';
         document.getElementById('note-editor').classList.add('visible');
         renderNotes();
@@ -973,6 +1023,8 @@
 
     function autoSaveNote() {
         if (!activeNoteId) return;
+        document.getElementById('note-date-display').textContent =
+            formatNoteDate(document.getElementById('note-date-input').value);
         clearTimeout(autoSaveTimer);
         autoSaveTimer = setTimeout(async () => {
             await updateNote(activeNoteId, {
