@@ -616,8 +616,10 @@
             const email = currentUser.email || '';
             document.getElementById('user-email-display').textContent = email.split('@')[0];
             applyTheme();
-            await loadSettings();
-            await refresh();
+            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                await loadSettings();
+                await refresh();
+            }
         } else {
             currentUser = null;
             document.getElementById('app').classList.remove('visible');
@@ -1019,22 +1021,6 @@
     async function refresh() { await loadTasks(); render(); }
 
     applyTheme();
-
-    // Force session check on load
-    sb.auth.getSession().then(({ data: { session } }) => {
-        if (!session) {
-            document.getElementById('auth-screen').style.display = 'flex';
-            document.getElementById('app').classList.remove('visible');
-        } else {
-            currentUser = session.user;
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('app').classList.add('visible');
-            const email = currentUser.email || '';
-            document.getElementById('user-email-display').textContent = email.split('@')[0];
-            applyTheme();
-            loadSettings().then(() => refresh());
-        }
-    });
 </script>
 </body>
 </html>
