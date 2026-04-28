@@ -552,6 +552,7 @@
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let currentUser   = null;
+    let initialized   = false;
     let weekOffset    = 0;
     let tasks         = [];
     let settings      = { weekends_active: false };
@@ -616,11 +617,13 @@
             const email = currentUser.email || '';
             document.getElementById('user-email-display').textContent = email.split('@')[0];
             applyTheme();
-            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            if (!initialized) {
+                initialized = true;
                 await loadSettings();
                 await refresh();
             }
         } else {
+            initialized = false;
             currentUser = null;
             document.getElementById('app').classList.remove('visible');
             document.getElementById('auth-screen').style.display = 'flex';
