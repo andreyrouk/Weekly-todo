@@ -450,6 +450,59 @@
         .morning-btns { display: flex; gap: 8px; flex-wrap: wrap; }
         .user-info { font-size: 12px; color: #666; }
 
+        /* ── Sub-tasks ── */
+        .subtask-section { margin-top: 6px; }
+        .subtask-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+        .subtask-row input[type=checkbox] { flex-shrink: 0; accent-color: #7c3aed; width: 13px; height: 13px; cursor: pointer; }
+        .subtask-row input[type=text] {
+            flex: 1;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid #2a2a2a;
+            color: #ccc;
+            font-size: 12px;
+            padding: 2px 4px;
+            outline: none;
+            font-family: inherit;
+            min-width: 0;
+        }
+        .subtask-row input[type=text].done { text-decoration: line-through; color: #555; }
+        .subtask-row input[type=text]:focus { border-bottom-color: #7c3aed; }
+        body.light .subtask-row input[type=text] { color: #333; border-bottom-color: #ddd; }
+        .subtask-row .del-sub { background: transparent; color: #444; border: none; padding: 2px 4px; font-size: 10px; cursor: pointer; flex-shrink: 0; }
+        .subtask-row .del-sub:hover { color: #e74c3c; }
+        .add-subtask-btn { background: transparent; color: #555; border: none; font-size: 11px; padding: 4px 0; cursor: pointer; width: 100%; text-align: left; }
+        .add-subtask-btn:hover { color: #7c3aed; }
+        .subtask-progress { font-size: 10px; color: #7c3aed; font-weight: 600; margin-left: 4px; vertical-align: middle; }
+        .task-expand-btn { background: transparent; color: #555; border: none; font-size: 11px; padding: 2px 4px; cursor: pointer; }
+        .task-expand-btn:hover { color: #aaa; }
+
+        /* ── List View ── */
+        #list-view { flex: 1; overflow-y: auto; display: none; flex-direction: column; gap: 16px; padding-bottom: 20px; max-width: 640px; }
+        .list-day-group { display: flex; flex-direction: column; gap: 6px; }
+        .list-day-header {
+            font-size: 11px;
+            font-weight: 700;
+            color: #666;
+            padding: 4px 0;
+            border-bottom: 1px solid #2a2a2a;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 2px;
+        }
+        .list-day-header.today { color: #7c3aed; border-bottom-color: #7c3aed; }
+        body.light .list-day-header { color: #999; border-bottom-color: #eee; }
+        body.light .list-day-header.today { color: #7c3aed; }
+        .list-tasks { display: flex; flex-direction: column; gap: 6px; }
+
+        /* ── View toggle ── */
+        .view-toggle { display: flex; gap: 2px; margin-left: 8px; }
+        .view-toggle-btn { padding: 5px 10px; font-size: 12px; background: #2a2a2a; color: #666; border: none; border-radius: 4px; cursor: pointer; }
+        .view-toggle-btn.active { background: #7c3aed; color: #fff; }
+        .view-toggle-btn:hover:not(.active) { background: #333; color: #aaa; }
+        body.light .view-toggle-btn { background: #e5e5e5; color: #555; }
+        body.light .view-toggle-btn.active { background: #7c3aed; color: #fff; }
+
         /* ── Mobile ── */
         @media (max-width: 640px) {
             body { overflow-y: auto; }
@@ -522,6 +575,10 @@
                 <button class="btn-secondary" onclick="changeWeek(-1)">← Prev</button>
                 <span id="week-label"></span>
                 <button class="btn-secondary" onclick="changeWeek(1)">Next →</button>
+                <div class="view-toggle">
+                    <button class="view-toggle-btn" id="view-board-btn" onclick="setViewMode('board')">⊞ Board</button>
+                    <button class="view-toggle-btn" id="view-list-btn" onclick="setViewMode('list')">☰ List</button>
+                </div>
             </div>
             <span class="user-info" id="user-email-display"></span>
             <button class="btn-secondary" id="theme-btn" onclick="toggleTheme()">☀ Light</button>
@@ -533,6 +590,7 @@
     <div id="morning-prompt" class="hidden"></div>
 
     <div class="board" id="board"></div>
+    <div id="list-view"></div>
 
     <div id="notes-panel">
         <div class="notes-list" id="notes-list">
@@ -631,6 +689,9 @@
     let autoSaveTimer        = null;
     let selectedText         = '';
     let authMode             = 'signin';
+    let subtasksCache        = {};         // { taskId: subtask[] }
+    let expandedTasks        = new Set();  // task IDs with subtask panel open
+    let viewMode             = localStorage.getItem('viewMode') || 'board';
 
     function generateId() {
         return (typeof crypto !== 'undefined' && crypto.randomUUID)
@@ -691,7 +752,7 @@
         initialized = false; currentUser = null;
         document.getElementById('app').classList.remove('visible');
         document.getElementById('auth-screen').style.display = 'flex';
-        tasks = []; notes = [];
+        tasks = []; notes = []; subtasksCache = {}; expandedTasks = new Set();
         sb.auth.signOut().catch(() => {}); // best-effort server invalidation
     }
 
@@ -714,7 +775,7 @@
             currentUser = null;
             document.getElementById('app').classList.remove('visible');
             document.getElementById('auth-screen').style.display = 'flex';
-            tasks = []; notes = [];
+            tasks = []; notes = []; subtasksCache = {}; expandedTasks = new Set();
         }
     });
 
@@ -762,6 +823,33 @@
 
     async function deleteTask(id) {
         await sb.from('tasks').delete().eq('id', id).eq('user_id', currentUser.id);
+    }
+
+    // ── Sub-tasks ─────────────────────────────────────────────────────────────
+
+    async function loadSubtasks(taskId) {
+        const { data } = await sb.from('subtasks')
+            .select('*')
+            .eq('task_id', taskId)
+            .eq('user_id', currentUser.id)
+            .order('position', { ascending: true });
+        subtasksCache[taskId] = data || [];
+    }
+
+    async function createSubtask(taskId, title) {
+        const pos = (subtasksCache[taskId] || []).length;
+        const { data } = await sb.from('subtasks')
+            .insert({ task_id: taskId, user_id: currentUser.id, title, completed: false, position: pos })
+            .select().single();
+        return data;
+    }
+
+    async function updateSubtask(id, data) {
+        await sb.from('subtasks').update(data).eq('id', id).eq('user_id', currentUser.id);
+    }
+
+    async function deleteSubtask(id) {
+        await sb.from('subtasks').delete().eq('id', id).eq('user_id', currentUser.id);
     }
 
     async function generateRecurringTasks() {
@@ -883,13 +971,36 @@
     // ── Render ────────────────────────────────────────────────────────────────
 
     function render() {
-    document.getElementById('week-label').textContent = getWeekLabel();
-    const isTasksTab = document.getElementById('tab-tasks').classList.contains('active');
-    if (isTasksTab) {
-        renderMorningPrompt();
-        renderBoard();
+        document.getElementById('week-label').textContent = getWeekLabel();
+        const isTasksTab = document.getElementById('tab-tasks').classList.contains('active');
+        if (isTasksTab) {
+            renderMorningPrompt();
+            const board = document.getElementById('board');
+            const listEl = document.getElementById('list-view');
+            if (viewMode === 'list') {
+                board.style.display = 'none';
+                listEl.style.display = 'flex';
+                renderList();
+            } else {
+                board.style.display = 'flex';
+                listEl.style.display = 'none';
+                renderBoard();
+            }
+            document.getElementById('view-board-btn').classList.toggle('active', viewMode === 'board');
+            document.getElementById('view-list-btn').classList.toggle('active', viewMode === 'list');
+        }
     }
-}
+
+    function setViewMode(mode) {
+        viewMode = mode;
+        localStorage.setItem('viewMode', mode);
+        render();
+    }
+
+    function renderCurrentView() {
+        if (viewMode === 'list') renderList();
+        else renderBoard();
+    }
 
     function renderBoard() {
         const board = document.getElementById('board');
@@ -929,23 +1040,94 @@
         });
     }
 
+    function renderList() {
+        const listEl = document.getElementById('list-view');
+        if (!listEl) return;
+        listEl.innerHTML = '';
+        const priScore = p => p === 'High' ? 1 : p === 'Low' ? 3 : 2;
+        getWeekDays().forEach(day => {
+            const active = !day.isWeekend || settings.weekends_active;
+            const dayTasks = tasks
+                .filter(t => t.day === day.iso)
+                .sort((a, b) => {
+                    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                    return priScore(a.priority) - priScore(b.priority);
+                });
+            if (!active && !dayTasks.length) return;
+
+            const [y, m, d] = day.iso.split('-').map(Number);
+            const date = new Date(y, m - 1, d);
+            const weekdayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+            const monthName   = date.toLocaleDateString('en-US', { month: 'short' });
+
+            const group = document.createElement('div');
+            group.className = 'list-day-group';
+            group.addEventListener('dragover', e => e.preventDefault());
+            group.addEventListener('drop', async e => {
+                e.preventDefault();
+                if (dragTaskId) { await updateTask(dragTaskId, { day: day.iso, completed: false }); await refresh(); }
+            });
+
+            const header = document.createElement('div');
+            header.className = `list-day-header${day.isToday ? ' today' : ''}`;
+            header.textContent = `${weekdayName} · ${monthName} ${d}`;
+            group.appendChild(header);
+
+            const tasksDiv = document.createElement('div');
+            tasksDiv.className = 'list-tasks';
+            tasksDiv.innerHTML = dayTasks.map(t => renderTask(t)).join('');
+            group.appendChild(tasksDiv);
+
+            if (active) {
+                const addBtn = document.createElement('button');
+                addBtn.className = 'add-task-btn';
+                addBtn.textContent = '+ Add Task';
+                addBtn.onclick = () => openAddTask(day.iso);
+                group.appendChild(addBtn);
+            }
+            listEl.appendChild(group);
+        });
+    }
+
     function renderTask(t) {
         const recurBadge = t.recurrence && t.recurrence !== 'none'
             ? `<span class="recur-badge" title="${t.recurrence === 'daily' ? 'Repeats daily (Mon–Fri)' : 'Repeats weekly'}">↻</span>`
             : '';
+        const subs = subtasksCache[t.id];
+        const progressBadge = subs && subs.length
+            ? `<span class="subtask-progress" id="progress-${t.id}">${subs.filter(s => s.completed).length}/${subs.length}</span>`
+            : '';
+        const isExpanded = expandedTasks.has(t.id);
+        const subtaskSection = isExpanded ? renderSubtaskSection(t.id) : '';
         return `
             <div class="task-card priority-${t.priority}${t.completed ? ' completed' : ''}"
                  draggable="true" ondragstart="dragTaskId='${t.id}'" ondragend="dragTaskId=null">
                 <div class="task-top">
                     <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.id}', this.checked)">
-                    <div class="task-title${t.completed ? ' done' : ''}">${escHtml(t.title)}${recurBadge}</div>
+                    <div class="task-title${t.completed ? ' done' : ''}">${escHtml(t.title)}${recurBadge}${progressBadge}</div>
                 </div>
                 ${t.notes ? `<div class="task-notes">${escHtml(t.notes)}</div>` : ''}
+                ${subtaskSection}
                 <div class="task-actions">
+                    <button class="task-expand-btn" onclick="toggleSubtasks('${t.id}')">${isExpanded ? '▼' : '▶'} Sub-tasks</button>
                     <button onclick="openEditTask('${t.id}')">✎ Edit</button>
                     <button onclick="confirmDelete('${t.id}')">✕ Delete</button>
                 </div>
             </div>`;
+    }
+
+    function renderSubtaskSection(taskId) {
+        const subs = subtasksCache[taskId] || [];
+        const rows = subs.map(s => `
+            <div class="subtask-row" id="sr-${s.id}">
+                <input type="checkbox" ${s.completed ? 'checked' : ''}
+                       onchange="toggleSubtask('${s.id}','${taskId}',this.checked)">
+                <input type="text" value="${escHtml(s.title)}" class="${s.completed ? 'done' : ''}"
+                       onblur="saveSubtaskTitle('${s.id}','${taskId}',this.value)"
+                       onkeydown="handleSubtaskKeydown(event,'${taskId}','${s.id}')">
+                <button class="del-sub" onclick="deleteSubtaskItem('${s.id}','${taskId}')">✕</button>
+            </div>`).join('');
+        return `<div class="subtask-section" id="sub-${taskId}">${rows}<button class="add-subtask-btn" onclick="addSubtask('${taskId}')">+ Add sub-task</button></div>`;
     }
 
     function renderMorningPrompt() {
@@ -968,6 +1150,80 @@
     function escHtml(str) {
         if (!str) return '';
         return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Sub-task actions ──────────────────────────────────────────────────────
+
+    async function toggleSubtasks(taskId) {
+        if (expandedTasks.has(taskId)) {
+            expandedTasks.delete(taskId);
+        } else {
+            expandedTasks.add(taskId);
+            if (!subtasksCache[taskId]) {
+                try { await loadSubtasks(taskId); } catch(e) { subtasksCache[taskId] = []; }
+            }
+        }
+        renderCurrentView();
+    }
+
+    async function addSubtask(taskId) {
+        let item;
+        try { item = await createSubtask(taskId, ''); } catch(e) {}
+        if (item) subtasksCache[taskId] = [...(subtasksCache[taskId] || []), item];
+        renderCurrentView();
+        setTimeout(() => {
+            const section = document.getElementById(`sub-${taskId}`);
+            if (section) {
+                const inputs = section.querySelectorAll('input[type=text]');
+                if (inputs.length) inputs[inputs.length - 1].focus();
+            }
+        }, 30);
+    }
+
+    async function toggleSubtask(id, taskId, checked) {
+        try { await updateSubtask(id, { completed: checked }); } catch(e) {}
+        if (subtasksCache[taskId]) {
+            const sub = subtasksCache[taskId].find(s => s.id === id);
+            if (sub) sub.completed = checked;
+        }
+        const row = document.getElementById(`sr-${id}`);
+        if (row) { const inp = row.querySelector('input[type=text]'); if (inp) inp.className = checked ? 'done' : ''; }
+        const badge = document.getElementById(`progress-${taskId}`);
+        if (badge && subtasksCache[taskId]) {
+            const done = subtasksCache[taskId].filter(s => s.completed).length;
+            badge.textContent = `${done}/${subtasksCache[taskId].length}`;
+        }
+    }
+
+    async function saveSubtaskTitle(id, taskId, title) {
+        title = (title || '').trim();
+        if (subtasksCache[taskId]) {
+            const sub = subtasksCache[taskId].find(s => s.id === id);
+            if (sub) sub.title = title;
+        }
+        if (title) {
+            try { await updateSubtask(id, { title }); } catch(e) {}
+        }
+    }
+
+    async function deleteSubtaskItem(id, taskId) {
+        try { await deleteSubtask(id); } catch(e) {}
+        if (subtasksCache[taskId]) subtasksCache[taskId] = subtasksCache[taskId].filter(s => s.id !== id);
+        renderCurrentView();
+    }
+
+    function handleSubtaskKeydown(e, taskId, subtaskId) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const title = e.target.value.trim();
+            if (subtasksCache[taskId]) {
+                const sub = subtasksCache[taskId].find(s => s.id === subtaskId);
+                if (sub) sub.title = title;
+            }
+            if (title) updateSubtask(subtaskId, { title }).catch(() => {});
+            addSubtask(taskId);
+        }
+        if (e.key === 'Escape') e.target.blur();
     }
 
     // ── Task actions ──────────────────────────────────────────────────────────
@@ -1193,7 +1449,15 @@
     async function switchTab(tab) {
         document.getElementById('tab-tasks').classList.toggle('active', tab === 'tasks');
         document.getElementById('tab-notes').classList.toggle('active', tab === 'notes');
-        document.getElementById('board').style.display = tab === 'tasks' ? 'flex' : 'none';
+        if (tab === 'tasks') {
+            document.getElementById('board').style.display = viewMode === 'board' ? 'flex' : 'none';
+            document.getElementById('list-view').style.display = viewMode === 'list' ? 'flex' : 'none';
+            document.getElementById('view-board-btn').classList.toggle('active', viewMode === 'board');
+            document.getElementById('view-list-btn').classList.toggle('active', viewMode === 'list');
+        } else {
+            document.getElementById('board').style.display = 'none';
+            document.getElementById('list-view').style.display = 'none';
+        }
         document.getElementById('morning-prompt').style.display = tab === 'tasks' ? 'block' : 'none';
         document.getElementById('week-nav').style.display = tab === 'tasks' ? 'flex' : 'none';
         document.getElementById('notes-panel').classList.toggle('active', tab === 'notes');
