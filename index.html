@@ -241,6 +241,7 @@
         .task-title { flex: 1; font-size: 13px; line-height: 1.4; word-break: break-word; }
         .task-title.done { text-decoration: line-through; color: #666; }
         .task-notes { font-size: 11px; color: #888; margin-top: 4px; padding-left: 22px; word-break: break-word; }
+        .recur-badge { font-size: 10px; color: #7c3aed; margin-left: 4px; opacity: 0.8; }
         .task-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
         .task-actions button { padding: 2px 8px; font-size: 11px; background: transparent; color: #666; border: none; }
         .task-actions button:hover { color: #fff; }
@@ -574,6 +575,14 @@
                 <option>Low</option>
             </select>
         </div>
+        <div>
+            <label>Repeat</label>
+            <select id="task-recurrence-input">
+                <option value="none">None</option>
+                <option value="daily">Daily (Mon–Fri)</option>
+                <option value="weekly">Weekly</option>
+            </select>
+        </div>
         <div class="modal-btns">
             <button class="btn-secondary" onclick="closeModal()">Cancel</button>
             <button class="btn-primary" onclick="saveTask()">Save</button>
@@ -608,19 +617,29 @@
     const { createClient } = supabase;
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let currentUser   = null;
-    let initialized   = false;
-    let weekOffset    = 0;
-    let tasks         = [];
-    let settings      = { weekends_active: false };
-    let editingTaskId = null;
-    let addingToDay   = null;
-    let dragTaskId    = null;
-    let notes         = [];
-    let activeNoteId  = null;
-    let autoSaveTimer = null;
-    let selectedText  = '';
-    let authMode      = 'signin';
+    let currentUser          = null;
+    let initialized          = false;
+    let weekOffset           = 0;
+    let tasks                = [];
+    let settings             = { weekends_active: false };
+    let editingTaskId        = null;
+    let editingRecurrenceId  = null;
+    let addingToDay          = null;
+    let dragTaskId           = null;
+    let notes                = [];
+    let activeNoteId         = null;
+    let autoSaveTimer        = null;
+    let selectedText         = '';
+    let authMode             = 'signin';
+
+    function generateId() {
+        return (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                const r = Math.random() * 16 | 0;
+                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+              });
+    }
 
     // ── Auth ──────────────────────────────────────────────────────────────────
 
@@ -677,6 +696,7 @@
             if (!initialized) {
                 initialized = true;
                 try { await loadSettings(); } catch (e) {}
+                try { await generateRecurringTasks(); } catch (e) {}
                 try { await refresh(); } catch (e) { render(); }
             }
         } else {
@@ -732,6 +752,68 @@
 
     async function deleteTask(id) {
         await sb.from('tasks').delete().eq('id', id).eq('user_id', currentUser.id);
+    }
+
+    async function generateRecurringTasks() {
+        if (!currentUser) return;
+
+        // Fetch all recurring tasks for this user across all dates
+        const { data: recurring } = await sb
+            .from('tasks')
+            .select('title, notes, priority, recurrence, recurrence_id, day')
+            .eq('user_id', currentUser.id)
+            .in('recurrence', ['daily', 'weekly'])
+            .not('recurrence_id', 'is', null);
+
+        if (!recurring || !recurring.length) return;
+
+        // Build set of already-existing (recurrence_id:day) pairs
+        const existingSet = new Set(recurring.map(t => `${t.recurrence_id}:${t.day}`));
+
+        // Pick one template per recurrence_id (earliest date = original task)
+        const templates = {};
+        recurring.forEach(t => {
+            if (!templates[t.recurrence_id] || t.day < templates[t.recurrence_id].day)
+                templates[t.recurrence_id] = t;
+        });
+
+        // Compute next 28 days from today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const next28 = Array.from({ length: 28 }, (_, i) => {
+            const d = new Date(today);
+            d.setDate(today.getDate() + i);
+            return { iso: d.toISOString().split('T')[0], dow: d.getDay() };
+        });
+
+        const toCreate = [];
+        for (const [rid, tmpl] of Object.entries(templates)) {
+            const originDow = new Date(tmpl.day + 'T00:00:00').getDay();
+            for (const { iso, dow } of next28) {
+                const matches = tmpl.recurrence === 'daily'
+                    ? (dow >= 1 && dow <= 5)          // Mon–Fri
+                    : (dow === originDow);              // same weekday
+                if (matches && !existingSet.has(`${rid}:${iso}`)) {
+                    toCreate.push({
+                        title: tmpl.title,
+                        notes: tmpl.notes,
+                        priority: tmpl.priority,
+                        recurrence: tmpl.recurrence,
+                        recurrence_id: rid,
+                        day: iso,
+                        completed: false,
+                        position: 0,
+                        user_id: currentUser.id
+                    });
+                    existingSet.add(`${rid}:${iso}`); // prevent dupes within the same batch
+                }
+            }
+        }
+
+        if (toCreate.length) {
+            for (let i = 0; i < toCreate.length; i += 50)
+                await sb.from('tasks').insert(toCreate.slice(i, i + 50));
+        }
     }
 
     // ── Notes ─────────────────────────────────────────────────────────────────
@@ -838,12 +920,15 @@
     }
 
     function renderTask(t) {
+        const recurBadge = t.recurrence && t.recurrence !== 'none'
+            ? `<span class="recur-badge" title="${t.recurrence === 'daily' ? 'Repeats daily (Mon–Fri)' : 'Repeats weekly'}">↻</span>`
+            : '';
         return `
             <div class="task-card priority-${t.priority}${t.completed ? ' completed' : ''}"
                  draggable="true" ondragstart="dragTaskId='${t.id}'" ondragend="dragTaskId=null">
                 <div class="task-top">
                     <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.id}', this.checked)">
-                    <div class="task-title${t.completed ? ' done' : ''}">${escHtml(t.title)}</div>
+                    <div class="task-title${t.completed ? ' done' : ''}">${escHtml(t.title)}${recurBadge}</div>
                 </div>
                 ${t.notes ? `<div class="task-notes">${escHtml(t.notes)}</div>` : ''}
                 <div class="task-actions">
@@ -903,11 +988,12 @@
     // ── Task modal ────────────────────────────────────────────────────────────
 
     function openAddTask(day) {
-        editingTaskId = null; addingToDay = day;
+        editingTaskId = null; editingRecurrenceId = null; addingToDay = day;
         document.getElementById('modal-title').textContent = 'Add Task';
         document.getElementById('task-title-input').value = '';
         document.getElementById('task-notes-input').value = '';
         document.getElementById('task-priority-input').value = 'Medium';
+        document.getElementById('task-recurrence-input').value = 'none';
         document.getElementById('task-modal').classList.remove('hidden');
         setTimeout(() => document.getElementById('task-title-input').focus(), 50);
     }
@@ -916,10 +1002,12 @@
         const t = tasks.find(t => t.id === id);
         if (!t) return;
         editingTaskId = id;
+        editingRecurrenceId = t.recurrence_id || null;
         document.getElementById('modal-title').textContent = 'Edit Task';
         document.getElementById('task-title-input').value = t.title;
         document.getElementById('task-notes-input').value = t.notes || '';
         document.getElementById('task-priority-input').value = t.priority;
+        document.getElementById('task-recurrence-input').value = t.recurrence || 'none';
         document.getElementById('task-modal').classList.remove('hidden');
         setTimeout(() => document.getElementById('task-title-input').focus(), 50);
     }
@@ -929,14 +1017,24 @@
     async function saveTask() {
         const title = document.getElementById('task-title-input').value.trim();
         if (!title) return;
+        const recurrence = document.getElementById('task-recurrence-input').value;
         const data = {
             title,
             notes: document.getElementById('task-notes-input').value.trim(),
-            priority: document.getElementById('task-priority-input').value
+            priority: document.getElementById('task-priority-input').value,
+            recurrence: recurrence || 'none'
         };
-        if (editingTaskId) { await updateTask(editingTaskId, data); }
-        else { await createTask({ ...data, day: addingToDay }); }
+        if (editingTaskId) {
+            // Assign a recurrence_id if switching from none→recurring on an existing task
+            if (recurrence !== 'none' && !editingRecurrenceId) data.recurrence_id = generateId();
+            if (recurrence === 'none') data.recurrence_id = null;
+            await updateTask(editingTaskId, data);
+        } else {
+            const recurrenceId = recurrence !== 'none' ? generateId() : null;
+            await createTask({ ...data, day: addingToDay, recurrence_id: recurrenceId });
+        }
         closeModal();
+        if (recurrence !== 'none') await generateRecurringTasks();
         await refresh();
     }
 
