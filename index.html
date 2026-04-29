@@ -676,8 +676,8 @@
             applyTheme();
             if (!initialized) {
                 initialized = true;
-                await loadSettings();
-                await refresh();
+                try { await loadSettings(); } catch (e) {}
+                try { await refresh(); } catch (e) { render(); }
             }
         } else {
             initialized = false;
@@ -1107,6 +1107,10 @@
     // ── Init ──────────────────────────────────────────────────────────────────
 
     async function refresh() { await loadTasks(); render(); }
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && currentUser && initialized) refresh();
+    });
 
     applyTheme();
 </script>
