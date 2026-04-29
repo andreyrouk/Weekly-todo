@@ -641,6 +641,11 @@
               });
     }
 
+    // Race a promise against a timeout so hung network calls don't block forever
+    function withTimeout(p, ms = 8000) {
+        return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+    }
+
     // ── Auth ──────────────────────────────────────────────────────────────────
 
     function toggleAuthMode() {
@@ -681,8 +686,13 @@
         if (error) showAuthError(error.message);
     }
 
-    async function signOut() {
-        await sb.auth.signOut();
+    function signOut() {
+        // Clear local state immediately so the button always works
+        initialized = false; currentUser = null;
+        document.getElementById('app').classList.remove('visible');
+        document.getElementById('auth-screen').style.display = 'flex';
+        tasks = []; notes = [];
+        sb.auth.signOut().catch(() => {}); // best-effort server invalidation
     }
 
     sb.auth.onAuthStateChange(async (event, session) => {
@@ -695,9 +705,9 @@
             applyTheme();
             if (!initialized) {
                 initialized = true;
-                try { await loadSettings(); } catch (e) {}
-                try { await generateRecurringTasks(); } catch (e) {}
-                try { await refresh(); } catch (e) { render(); }
+                try { await withTimeout(loadSettings()); } catch (e) {}
+                try { await withTimeout(generateRecurringTasks()); } catch (e) {}
+                try { await withTimeout(refresh()); } catch (e) { render(); }
             }
         } else {
             initialized = false;
