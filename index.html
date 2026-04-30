@@ -478,22 +478,37 @@
         .task-expand-btn:hover { color: #aaa; }
 
         /* ── List View ── */
-        #list-view { flex: 1; overflow-y: auto; display: none; flex-direction: column; gap: 16px; padding-bottom: 20px; max-width: 640px; }
-        .list-day-group { display: flex; flex-direction: column; gap: 6px; }
+        #list-view { flex: 1; overflow-y: auto; display: none; flex-direction: column; padding-bottom: 20px; width: 100%; }
+        .list-inner { width: 100%; max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; }
+        .list-day-group { display: flex; flex-direction: column; border-bottom: 1px solid #1e1e1e; }
+        body.light .list-day-group { border-bottom-color: #eee; }
         .list-day-header {
-            font-size: 11px;
-            font-weight: 700;
-            color: #666;
-            padding: 4px 0;
-            border-bottom: 1px solid #2a2a2a;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 4px;
+            cursor: pointer;
+            user-select: none;
+            font-size: 13px;
+            font-weight: 600;
+            color: #777;
+            border-radius: 4px;
         }
-        .list-day-header.today { color: #7c3aed; border-bottom-color: #7c3aed; }
-        body.light .list-day-header { color: #999; border-bottom-color: #eee; }
+        .list-day-header:hover { color: #bbb; }
+        .list-day-header.today { color: #9b6ff0; }
+        body.light .list-day-header { color: #888; }
+        body.light .list-day-header:hover { color: #444; }
         body.light .list-day-header.today { color: #7c3aed; }
-        .list-tasks { display: flex; flex-direction: column; gap: 6px; }
+        .list-day-arrow { font-size: 9px; transition: transform 0.2s ease; flex-shrink: 0; color: #555; }
+        .list-day-header.today .list-day-arrow { color: #9b6ff0; }
+        .list-day-arrow.open { transform: rotate(90deg); }
+        .list-day-title { flex: 1; }
+        .list-day-count { font-size: 11px; font-weight: 400; color: #555; }
+        .list-day-header.today .list-day-count { color: #9b6ff0; }
+        body.light .list-day-count { color: #aaa; }
+        .list-tasks-wrap { overflow: hidden; max-height: 0; transition: max-height 0.25s ease; }
+        .list-tasks-wrap.open { max-height: 3000px; transition: max-height 0.4s ease; }
+        .list-tasks { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 12px 0; }
 
         /* ── Report feature ── */
         .settings-divider { border: none; border-top: 1px solid #2a2a2a; margin: 8px 0; }
@@ -822,6 +837,7 @@
     let authMode             = 'signin';
     let subtasksCache        = {};
     let expandedTasks        = new Set();
+    let collapsedDays        = new Set(); // stores "iso:open" or "iso:closed" for explicit overrides
     let viewMode             = localStorage.getItem('viewMode') || 'board';
     let reportSettings       = { report_day: 5, report_time: '09:00', tone: 'Professional', format: 'Bullet Points', template: '' };
     let reportHistory        = [];
@@ -1179,10 +1195,31 @@
         });
     }
 
+    function isDayCollapsed(iso) {
+        if (collapsedDays.has(iso + ':open'))   return false;
+        if (collapsedDays.has(iso + ':closed')) return true;
+        return iso < todayIso(); // default: past = collapsed, today/future = expanded
+    }
+
+    function toggleDayCollapse(iso) {
+        const wasCollapsed = isDayCollapsed(iso);
+        collapsedDays.delete(iso + ':open');
+        collapsedDays.delete(iso + ':closed');
+        collapsedDays.add(iso + (wasCollapsed ? ':open' : ':closed'));
+        const arrow = document.getElementById('day-arrow-' + iso);
+        const wrap  = document.getElementById('day-wrap-'  + iso);
+        if (arrow) arrow.classList.toggle('open', !wasCollapsed);
+        if (wrap)  wrap.classList.toggle('open',  !wasCollapsed);
+    }
+
     function renderList() {
         const listEl = document.getElementById('list-view');
         if (!listEl) return;
         listEl.innerHTML = '';
+
+        const inner = document.createElement('div');
+        inner.className = 'list-inner';
+
         const priScore = p => p === 'High' ? 1 : p === 'Low' ? 3 : 2;
         getWeekDays().forEach(day => {
             const active = !day.isWeekend || settings.weekends_active;
@@ -1198,6 +1235,9 @@
             const date = new Date(y, m - 1, d);
             const weekdayName = date.toLocaleDateString('en-US', { weekday: 'long' });
             const monthName   = date.toLocaleDateString('en-US', { month: 'short' });
+            const incomplete  = dayTasks.filter(t => !t.completed).length;
+            const countText   = incomplete > 0 ? `· ${incomplete} task${incomplete !== 1 ? 's' : ''}` : '';
+            const collapsed   = isDayCollapsed(day.iso);
 
             const group = document.createElement('div');
             group.className = 'list-day-group';
@@ -1209,23 +1249,33 @@
 
             const header = document.createElement('div');
             header.className = `list-day-header${day.isToday ? ' today' : ''}`;
-            header.textContent = `${weekdayName} · ${monthName} ${d}`;
+            header.innerHTML = `<span class="list-day-arrow${collapsed ? '' : ' open'}" id="day-arrow-${day.iso}">▶</span>
+                <span class="list-day-title">${weekdayName} · ${monthName} ${d}</span>
+                <span class="list-day-count">${countText}</span>`;
+            header.onclick = () => toggleDayCollapse(day.iso);
             group.appendChild(header);
+
+            const wrap = document.createElement('div');
+            wrap.className = 'list-tasks-wrap' + (collapsed ? '' : ' open');
+            wrap.id = 'day-wrap-' + day.iso;
 
             const tasksDiv = document.createElement('div');
             tasksDiv.className = 'list-tasks';
             tasksDiv.innerHTML = dayTasks.map(t => renderTask(t)).join('');
-            group.appendChild(tasksDiv);
+            wrap.appendChild(tasksDiv);
 
             if (active) {
                 const addBtn = document.createElement('button');
                 addBtn.className = 'add-task-btn';
                 addBtn.textContent = '+ Add Task';
                 addBtn.onclick = () => openAddTask(day.iso);
-                group.appendChild(addBtn);
+                wrap.appendChild(addBtn);
             }
-            listEl.appendChild(group);
+            group.appendChild(wrap);
+            inner.appendChild(group);
         });
+
+        listEl.appendChild(inner);
     }
 
     function renderTask(t) {
