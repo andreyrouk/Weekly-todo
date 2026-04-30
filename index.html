@@ -1235,8 +1235,8 @@
             const date = new Date(y, m - 1, d);
             const weekdayName = date.toLocaleDateString('en-US', { weekday: 'long' });
             const monthName   = date.toLocaleDateString('en-US', { month: 'short' });
-            const incomplete  = dayTasks.filter(t => !t.completed).length;
-            const countText   = incomplete > 0 ? `· ${incomplete} task${incomplete !== 1 ? 's' : ''}` : '';
+            const completed   = dayTasks.filter(t => t.completed).length;
+            const countText   = dayTasks.length > 0 ? `· ${completed}/${dayTasks.length}` : '';
             const collapsed   = isDayCollapsed(day.iso);
 
             const group = document.createElement('div');
