@@ -1208,8 +1208,8 @@
         collapsedDays.add(iso + (wasCollapsed ? ':open' : ':closed'));
         const arrow = document.getElementById('day-arrow-' + iso);
         const wrap  = document.getElementById('day-wrap-'  + iso);
-        if (arrow) arrow.classList.toggle('open', !wasCollapsed);
-        if (wrap)  wrap.classList.toggle('open',  !wasCollapsed);
+        if (arrow) arrow.classList.toggle('open', wasCollapsed);
+        if (wrap)  wrap.classList.toggle('open',  wasCollapsed);
     }
 
     function renderList() {
