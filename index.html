@@ -495,13 +495,15 @@
         body.light .list-day-header.today { color: #7c3aed; }
         .list-tasks { display: flex; flex-direction: column; gap: 6px; }
 
-        /* ── View toggle ── */
-        .view-toggle { display: flex; gap: 2px; margin-left: 8px; }
-        .view-toggle-btn { padding: 5px 10px; font-size: 12px; background: #2a2a2a; color: #666; border: none; border-radius: 4px; cursor: pointer; }
-        .view-toggle-btn.active { background: #7c3aed; color: #fff; }
-        .view-toggle-btn:hover:not(.active) { background: #333; color: #aaa; }
-        body.light .view-toggle-btn { background: #e5e5e5; color: #555; }
-        body.light .view-toggle-btn.active { background: #7c3aed; color: #fff; }
+        /* ── Settings toggles ── */
+        .settings-label { font-size: 12px; color: #aaa; display: block; margin-bottom: 6px; }
+        body.light .settings-label { color: #666; }
+        .settings-toggle-group { display: flex; gap: 4px; }
+        .settings-toggle-btn { padding: 7px 0; font-size: 13px; background: #2a2a2a; color: #777; border: none; border-radius: 6px; cursor: pointer; flex: 1; }
+        .settings-toggle-btn.active { background: #7c3aed; color: #fff; }
+        .settings-toggle-btn:hover:not(.active) { background: #333; color: #ccc; }
+        body.light .settings-toggle-btn { background: #f0f0f0; color: #666; }
+        body.light .settings-toggle-btn.active { background: #7c3aed; color: #fff; }
 
         /* ── Mobile ── */
         @media (max-width: 640px) {
@@ -575,13 +577,8 @@
                 <button class="btn-secondary" onclick="changeWeek(-1)">← Prev</button>
                 <span id="week-label"></span>
                 <button class="btn-secondary" onclick="changeWeek(1)">Next →</button>
-                <div class="view-toggle">
-                    <button class="view-toggle-btn" id="view-board-btn" onclick="setViewMode('board')">⊞ Board</button>
-                    <button class="view-toggle-btn" id="view-list-btn" onclick="setViewMode('list')">☰ List</button>
-                </div>
             </div>
             <span class="user-info" id="user-email-display"></span>
-            <button class="btn-secondary" id="theme-btn" onclick="toggleTheme()">☀ Light</button>
             <button class="btn-secondary" onclick="openSettings()">⚙ Settings</button>
             <button class="btn-secondary" onclick="signOut()">Sign Out</button>
         </div>
@@ -658,9 +655,22 @@
                 Show weekends as active days
             </label>
         </div>
+        <div>
+            <label class="settings-label">View</label>
+            <div class="settings-toggle-group">
+                <button class="settings-toggle-btn" id="settings-board-btn" onclick="settingsSetView('board')">⊞ Board</button>
+                <button class="settings-toggle-btn" id="settings-list-btn" onclick="settingsSetView('list')">☰ List</button>
+            </div>
+        </div>
+        <div>
+            <label class="settings-label">Theme</label>
+            <div class="settings-toggle-group">
+                <button class="settings-toggle-btn" id="settings-dark-btn" onclick="settingsSetTheme('dark')">🌙 Dark</button>
+                <button class="settings-toggle-btn" id="settings-light-btn" onclick="settingsSetTheme('light')">☀ Light</button>
+            </div>
+        </div>
         <div class="modal-btns">
-            <button class="btn-secondary" onclick="closeSettings()">Cancel</button>
-            <button class="btn-primary" onclick="saveSettings()">Save</button>
+            <button class="btn-primary" onclick="saveSettings()">Done</button>
         </div>
     </div>
 </div>
@@ -986,8 +996,6 @@
                 listEl.style.display = 'none';
                 renderBoard();
             }
-            document.getElementById('view-board-btn').classList.toggle('active', viewMode === 'board');
-            document.getElementById('view-list-btn').classList.toggle('active', viewMode === 'list');
         }
     }
 
@@ -1308,6 +1316,11 @@
 
     function openSettings() {
         document.getElementById('weekends-toggle').checked = settings.weekends_active;
+        const isLight = document.body.classList.contains('light');
+        document.getElementById('settings-dark-btn').classList.toggle('active', !isLight);
+        document.getElementById('settings-light-btn').classList.toggle('active', isLight);
+        document.getElementById('settings-board-btn').classList.toggle('active', viewMode === 'board');
+        document.getElementById('settings-list-btn').classList.toggle('active', viewMode === 'list');
         document.getElementById('settings-modal').classList.remove('hidden');
     }
 
@@ -1319,20 +1332,24 @@
         closeSettings(); render();
     }
 
-    // ── Theme ─────────────────────────────────────────────────────────────────
-
-    function toggleTheme() {
-        const isLight = document.body.classList.toggle('light');
-        document.getElementById('theme-btn').textContent = isLight ? '🌙 Dark' : '☀ Light';
-        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    function settingsSetView(mode) {
+        setViewMode(mode);
+        document.getElementById('settings-board-btn').classList.toggle('active', mode === 'board');
+        document.getElementById('settings-list-btn').classList.toggle('active', mode === 'list');
     }
 
+    function settingsSetTheme(theme) {
+        const isLight = theme === 'light';
+        document.body.classList.toggle('light', isLight);
+        localStorage.setItem('theme', theme);
+        document.getElementById('settings-dark-btn').classList.toggle('active', !isLight);
+        document.getElementById('settings-light-btn').classList.toggle('active', isLight);
+    }
+
+    // ── Theme ─────────────────────────────────────────────────────────────────
+
     function applyTheme() {
-        if (localStorage.getItem('theme') === 'light') {
-            document.body.classList.add('light');
-            const btn = document.getElementById('theme-btn');
-            if (btn) btn.textContent = '🌙 Dark';
-        }
+        if (localStorage.getItem('theme') === 'light') document.body.classList.add('light');
     }
 
     // ── Notes ─────────────────────────────────────────────────────────────────
@@ -1452,8 +1469,6 @@
         if (tab === 'tasks') {
             document.getElementById('board').style.display = viewMode === 'board' ? 'flex' : 'none';
             document.getElementById('list-view').style.display = viewMode === 'list' ? 'flex' : 'none';
-            document.getElementById('view-board-btn').classList.toggle('active', viewMode === 'board');
-            document.getElementById('view-list-btn').classList.toggle('active', viewMode === 'list');
         } else {
             document.getElementById('board').style.display = 'none';
             document.getElementById('list-view').style.display = 'none';
