@@ -495,6 +495,31 @@
         body.light .list-day-header.today { color: #7c3aed; }
         .list-tasks { display: flex; flex-direction: column; gap: 6px; }
 
+        /* ── Report feature ── */
+        .settings-divider { border: none; border-top: 1px solid #2a2a2a; margin: 8px 0; }
+        body.light .settings-divider { border-top-color: #eee; }
+        .settings-sublabel { font-size: 11px; color: #666; display: block; margin-bottom: 4px; }
+        .settings-input {
+            width: 100%; background: #2a2a2a; border: 1px solid #333;
+            border-radius: 6px; color: #fff; padding: 7px 10px; font-size: 13px;
+            outline: none; font-family: inherit;
+        }
+        .settings-input:focus { border-color: #7c3aed; }
+        body.light .settings-input { background: #f0f0f0; color: #111; border-color: #ddd; }
+        .report-badge { font-size: 10px; margin-left: 3px; opacity: 0.6; }
+        .report-history-item {
+            padding: 8px 10px; background: #1a1a1a; border-radius: 6px;
+            cursor: pointer; margin-top: 4px; border-left: 2px solid #333;
+        }
+        .report-history-item:hover { border-left-color: #7c3aed; background: #1e1e1e; }
+        .report-history-preview { display: block; font-size: 11px; color: #555; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        body.light .report-history-item { background: #f0f0f0; }
+        body.light .report-history-item:hover { background: #e8e4ff; border-left-color: #7c3aed; }
+        #report-modal .modal { max-width: 600px; width: 95vw; max-height: 82vh; overflow-y: auto; }
+        #report-modal-content { white-space: pre-wrap; background: #1a1a1a; padding: 12px; border-radius: 6px; font-family: inherit; font-size: 13px; line-height: 1.6; max-height: 45vh; overflow-y: auto; margin: 0; }
+        body.light #report-modal-content { background: #f5f5f5; color: #111; }
+        #settings-modal .modal { max-height: 88vh; overflow-y: auto; }
+
         /* ── Settings toggles ── */
         .settings-label { font-size: 12px; color: #aaa; display: block; margin-bottom: 6px; }
         body.light .settings-label { color: #666; }
@@ -585,6 +610,15 @@
     </div>
 
     <div id="morning-prompt" class="hidden"></div>
+    <div id="report-cadence-banner" class="hidden">
+        <div class="morning-card">
+            <p>📊 <strong>Ready to generate your weekly report?</strong></p>
+            <div class="morning-btns">
+                <button class="btn-primary" onclick="dismissReportBanner(); openSettingsToReport();">Generate Report</button>
+                <button class="btn-secondary" onclick="dismissReportBanner()">Dismiss</button>
+            </div>
+        </div>
+    </div>
 
     <div class="board" id="board"></div>
     <div id="list-view"></div>
@@ -638,6 +672,12 @@
                 <option value="weekly">Weekly</option>
             </select>
         </div>
+        <div>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="task-report-toggle" style="width:auto;" checked>
+                <span style="font-size:13px;">📊 Include in weekly report</span>
+            </label>
+        </div>
         <div class="modal-btns">
             <button class="btn-secondary" onclick="closeModal()">Cancel</button>
             <button class="btn-primary" onclick="saveTask()">Save</button>
@@ -669,8 +709,89 @@
                 <button class="settings-toggle-btn" id="settings-light-btn" onclick="settingsSetTheme('light')">☀ Light</button>
             </div>
         </div>
+        <hr class="settings-divider">
+        <div>
+            <label class="settings-label">📊 Report Settings</label>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <div>
+                    <label class="settings-sublabel">Anthropic API Key</label>
+                    <input type="password" id="report-api-key" class="settings-input" placeholder="sk-ant-…" autocomplete="off">
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <div style="flex:1;">
+                        <label class="settings-sublabel">Report Day</label>
+                        <select id="report-day-input" class="settings-input">
+                            <option value="1">Monday</option>
+                            <option value="2">Tuesday</option>
+                            <option value="3">Wednesday</option>
+                            <option value="4">Thursday</option>
+                            <option value="5" selected>Friday</option>
+                            <option value="6">Saturday</option>
+                            <option value="0">Sunday</option>
+                        </select>
+                    </div>
+                    <div style="flex:1;">
+                        <label class="settings-sublabel">Report Time</label>
+                        <input type="time" id="report-time-input" value="09:00" class="settings-input">
+                    </div>
+                </div>
+                <div>
+                    <label class="settings-sublabel">Tone</label>
+                    <select id="report-tone-input" class="settings-input">
+                        <option>Professional</option>
+                        <option>Formal</option>
+                        <option>Casual</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="settings-sublabel">Format</label>
+                    <select id="report-format-input" class="settings-input">
+                        <option>Bullet Points</option>
+                        <option>Plain Paragraphs</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="settings-sublabel">Template</label>
+                    <textarea id="report-template-input" rows="4" class="settings-input" style="resize:vertical; min-height:70px;" placeholder="Paste an example of a previous report or describe what you want. Claude will follow this structure every time."></textarea>
+                    <div style="display:flex; gap:4px; margin-top:5px; flex-wrap:wrap;">
+                        <button class="btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="setReportTemplate('marketing')">Use Marketing Template</button>
+                        <button class="btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="setReportTemplate('general')">Use General Template</button>
+                        <button class="btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="setReportTemplate('engineering')">Use Engineering Template</button>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="openGenerateReport()">📊 Generate Report</button>
+                <div id="report-history-list"></div>
+            </div>
+        </div>
         <div class="modal-btns">
             <button class="btn-primary" onclick="saveSettings()">Done</button>
+        </div>
+    </div>
+</div>
+
+<!-- Report Week Selector Modal -->
+<div id="report-week-modal" class="modal-overlay hidden">
+    <div class="modal" style="width:300px;">
+        <h2>Select Week</h2>
+        <p style="font-size:13px; color:#aaa; margin-bottom:4px;">Which week's tasks to include?</p>
+        <div class="modal-btns" style="flex-direction:column; gap:8px;">
+            <button class="btn-primary" style="width:100%;" onclick="generateReport(0)">Current Week</button>
+            <button class="btn-secondary" style="width:100%;" onclick="generateReport(-1)">Last Week</button>
+            <button class="btn-secondary" style="width:100%;" onclick="closeWeekModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Report Preview Modal -->
+<div id="report-modal" class="modal-overlay hidden">
+    <div class="modal">
+        <h2 id="report-modal-title">Weekly Report</h2>
+        <pre id="report-modal-content"></pre>
+        <div class="modal-btns" style="flex-wrap:wrap; gap:8px; margin-top:8px;">
+            <button class="btn-secondary" onclick="openGenerateReport(true)">↻ Regenerate</button>
+            <button class="btn-secondary" onclick="copyReport('text')">Copy Text</button>
+            <button class="btn-secondary" onclick="copyReport('markdown')">Copy Markdown</button>
+            <button class="btn-secondary" onclick="closeReportModal()">Close</button>
         </div>
     </div>
 </div>
@@ -699,9 +820,14 @@
     let autoSaveTimer        = null;
     let selectedText         = '';
     let authMode             = 'signin';
-    let subtasksCache        = {};         // { taskId: subtask[] }
-    let expandedTasks        = new Set();  // task IDs with subtask panel open
+    let subtasksCache        = {};
+    let expandedTasks        = new Set();
     let viewMode             = localStorage.getItem('viewMode') || 'board';
+    let reportSettings       = { report_day: 5, report_time: '09:00', tone: 'Professional', format: 'Bullet Points', template: '' };
+    let reportHistory        = [];
+    let reportBannerDismissed = false;
+    let currentReportContent = '';
+    let currentReportWeekOffset = 0;
 
     function generateId() {
         return (typeof crypto !== 'undefined' && crypto.randomUUID)
@@ -763,6 +889,7 @@
         document.getElementById('app').classList.remove('visible');
         document.getElementById('auth-screen').style.display = 'flex';
         tasks = []; notes = []; subtasksCache = {}; expandedTasks = new Set();
+        reportHistory = []; reportSettings = { report_day: 5, report_time: '09:00', tone: 'Professional', format: 'Bullet Points', template: '' };
         sb.auth.signOut().catch(() => {}); // best-effort server invalidation
     }
 
@@ -777,8 +904,11 @@
             if (!initialized) {
                 initialized = true;
                 try { await withTimeout(loadSettings()); } catch (e) {}
+                try { await withTimeout(loadReportSettings()); } catch (e) {}
+                try { await withTimeout(loadReportHistory()); } catch (e) {}
                 try { await withTimeout(generateRecurringTasks()); } catch (e) {}
                 try { await withTimeout(refresh()); } catch (e) { render(); }
+                checkReportCadence();
             }
         } else {
             initialized = false;
@@ -786,6 +916,7 @@
             document.getElementById('app').classList.remove('visible');
             document.getElementById('auth-screen').style.display = 'flex';
             tasks = []; notes = []; subtasksCache = {}; expandedTasks = new Set();
+            reportHistory = []; reportSettings = { report_day: 5, report_time: '09:00', tone: 'Professional', format: 'Bullet Points', template: '' };
         }
     });
 
@@ -1105,6 +1236,7 @@
         const progressBadge = subs && subs.length
             ? `<span class="subtask-progress" id="progress-${t.id}">${subs.filter(s => s.completed).length}/${subs.length}</span>`
             : '';
+        const reportBadge = t.include_in_report !== false ? `<span class="report-badge" title="Included in weekly report">📊</span>` : '';
         const isExpanded = expandedTasks.has(t.id);
         const subtaskSection = isExpanded ? renderSubtaskSection(t.id) : '';
         return `
@@ -1112,7 +1244,7 @@
                  draggable="true" ondragstart="dragTaskId='${t.id}'" ondragend="dragTaskId=null">
                 <div class="task-top">
                     <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.id}', this.checked)">
-                    <div class="task-title${t.completed ? ' done' : ''}">${escHtml(t.title)}${recurBadge}${progressBadge}</div>
+                    <div class="task-title${t.completed ? ' done' : ''}">${escHtml(t.title)}${recurBadge}${progressBadge}${reportBadge}</div>
                 </div>
                 ${t.notes ? `<div class="task-notes">${escHtml(t.notes)}</div>` : ''}
                 ${subtaskSection}
@@ -1268,6 +1400,7 @@
         document.getElementById('task-notes-input').value = '';
         document.getElementById('task-priority-input').value = 'Medium';
         document.getElementById('task-recurrence-input').value = 'none';
+        document.getElementById('task-report-toggle').checked = true;
         document.getElementById('task-modal').classList.remove('hidden');
         setTimeout(() => document.getElementById('task-title-input').focus(), 50);
     }
@@ -1282,6 +1415,7 @@
         document.getElementById('task-notes-input').value = t.notes || '';
         document.getElementById('task-priority-input').value = t.priority;
         document.getElementById('task-recurrence-input').value = t.recurrence || 'none';
+        document.getElementById('task-report-toggle').checked = t.include_in_report !== false;
         document.getElementById('task-modal').classList.remove('hidden');
         setTimeout(() => document.getElementById('task-title-input').focus(), 50);
     }
@@ -1296,7 +1430,8 @@
             title,
             notes: document.getElementById('task-notes-input').value.trim(),
             priority: document.getElementById('task-priority-input').value,
-            recurrence: recurrence || 'none'
+            recurrence: recurrence || 'none',
+            include_in_report: document.getElementById('task-report-toggle').checked
         };
         if (editingTaskId) {
             // Assign a recurrence_id if switching from none→recurring on an existing task
@@ -1321,6 +1456,14 @@
         document.getElementById('settings-light-btn').classList.toggle('active', isLight);
         document.getElementById('settings-board-btn').classList.toggle('active', viewMode === 'board');
         document.getElementById('settings-list-btn').classList.toggle('active', viewMode === 'list');
+        // Report settings
+        document.getElementById('report-day-input').value = reportSettings.report_day;
+        document.getElementById('report-time-input').value = reportSettings.report_time;
+        document.getElementById('report-tone-input').value = reportSettings.tone;
+        document.getElementById('report-format-input').value = reportSettings.format;
+        document.getElementById('report-template-input').value = reportSettings.template;
+        document.getElementById('report-api-key').value = localStorage.getItem('report_api_key') || '';
+        renderReportHistory();
         document.getElementById('settings-modal').classList.remove('hidden');
     }
 
@@ -1329,6 +1472,7 @@
     async function saveSettings() {
         settings.weekends_active = document.getElementById('weekends-toggle').checked;
         await saveSetting('weekends_active', settings.weekends_active ? '1' : '0');
+        try { await saveReportSettings(); } catch(e) {}
         closeSettings(); render();
     }
 
@@ -1344,6 +1488,212 @@
         localStorage.setItem('theme', theme);
         document.getElementById('settings-dark-btn').classList.toggle('active', !isLight);
         document.getElementById('settings-light-btn').classList.toggle('active', isLight);
+    }
+
+    // ── Report ────────────────────────────────────────────────────────────────
+
+    const REPORT_TEMPLATES = {
+        marketing: `## Weekly Marketing Update — [Week]
+
+### Campaigns & Launches
+- [task]
+
+### Content & Creative
+- [task]
+
+### Metrics & Results
+- [result]`,
+        general: `## Weekly Accomplishments — [Week]
+
+### Completed This Week
+- [task]
+
+### Key Highlights
+- [highlight]
+
+### Next Steps
+- [item]`,
+        engineering: `## Engineering Weekly — [Week]
+
+### Shipped
+- [feature/fix]
+
+### In Progress
+- [item]
+
+### Blockers / Notes
+- [item]`
+    };
+
+    function setReportTemplate(type) {
+        document.getElementById('report-template-input').value = REPORT_TEMPLATES[type] || '';
+    }
+
+    async function loadReportSettings() {
+        try {
+            const { data } = await sb.from('report_settings').select('*').eq('user_id', currentUser.id).single();
+            if (data) reportSettings = { report_day: data.report_day, report_time: data.report_time, tone: data.tone, format: data.format, template: data.template || '' };
+        } catch(e) {}
+    }
+
+    async function saveReportSettings() {
+        const s = {
+            user_id: currentUser.id,
+            report_day: parseInt(document.getElementById('report-day-input').value),
+            report_time: document.getElementById('report-time-input').value,
+            tone: document.getElementById('report-tone-input').value,
+            format: document.getElementById('report-format-input').value,
+            template: document.getElementById('report-template-input').value
+        };
+        reportSettings = { ...s };
+        try { await sb.from('report_settings').upsert(s, { onConflict: 'user_id' }); } catch(e) {}
+        const apiKey = document.getElementById('report-api-key').value.trim();
+        if (apiKey) localStorage.setItem('report_api_key', apiKey);
+    }
+
+    async function loadReportHistory() {
+        try {
+            const { data } = await sb.from('reports').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(5);
+            reportHistory = data || [];
+        } catch(e) { reportHistory = []; }
+    }
+
+    function renderReportHistory() {
+        const el = document.getElementById('report-history-list');
+        if (!el || !reportHistory.length) { if (el) el.innerHTML = ''; return; }
+        el.innerHTML = '<div class="settings-sublabel" style="margin-top:8px; margin-bottom:4px;">Recent Reports</div>' +
+            reportHistory.map((r, i) => `
+                <div class="report-history-item" onclick="viewHistoryReport(${i})">
+                    <span style="font-size:12px; font-weight:600;">${r.week_start} – ${r.week_end}</span>
+                    <span class="report-history-preview">${escHtml((r.content || '').split('\n')[0].replace(/^#+\s*/, '').slice(0, 70))}</span>
+                </div>`).join('');
+    }
+
+    function viewHistoryReport(idx) {
+        const r = reportHistory[idx];
+        if (!r) return;
+        currentReportContent = r.content;
+        document.getElementById('report-modal-title').textContent = `Report: ${r.week_start} – ${r.week_end}`;
+        document.getElementById('report-modal-content').textContent = r.content;
+        document.getElementById('report-modal').classList.remove('hidden');
+    }
+
+    function openGenerateReport(regenerate = false) {
+        saveReportSettings().catch(() => {});
+        if (regenerate) { generateReport(currentReportWeekOffset); return; }
+        document.getElementById('report-week-modal').classList.remove('hidden');
+    }
+
+    async function generateReport(weekOff) {
+        currentReportWeekOffset = weekOff;
+        document.getElementById('report-week-modal').classList.add('hidden');
+
+        const apiKey = localStorage.getItem('report_api_key') || '';
+        if (!apiKey) { alert('Please add your Anthropic API key in Report Settings first.'); return; }
+
+        // Compute days for the chosen week without changing the board's weekOffset
+        const savedOffset = weekOffset;
+        weekOffset = weekOff;
+        const days = getWeekDays();
+        weekOffset = savedOffset;
+
+        const weekStart = days[0].iso;
+        const weekEnd   = days[days.length - 1].iso;
+        const isos = days.map(d => d.iso);
+
+        let weekTasks = [];
+        try {
+            const { data } = await sb.from('tasks').select('title, notes, priority').in('day', isos).eq('user_id', currentUser.id).eq('completed', true);
+            // include_in_report column may not exist yet — filter client-side if it does
+            weekTasks = (data || []).filter(t => t.include_in_report !== false);
+        } catch(e) {}
+
+        const taskList = weekTasks.map(t => `- ${t.title}${t.notes ? ' (' + t.notes + ')' : ''}`).join('\n');
+        if (!taskList) { alert('No completed report-worthy tasks found for that week.'); return; }
+
+        // Show loading
+        document.getElementById('report-modal-title').textContent = 'Generating…';
+        document.getElementById('report-modal-content').textContent = '⏳ Calling Claude…';
+        document.getElementById('report-modal').classList.remove('hidden');
+        if (!document.getElementById('settings-modal').classList.contains('hidden')) closeSettings();
+
+        const prompt = `You are a professional writing assistant. Generate a weekly accomplishment report based on the following completed tasks.
+
+Tone: ${reportSettings.tone}
+Format: ${reportSettings.format}
+Template to follow: ${reportSettings.template || '(none — use a clean default structure)'}
+
+Completed tasks this week:
+${taskList}
+
+Generate a clean, professional report. Fix any grammar or punctuation issues. Do not include trivial tasks.`;
+
+        try {
+            const resp = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true'
+                },
+                body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+            });
+            const json = await resp.json();
+            if (!resp.ok) throw new Error(json.error?.message || `API error ${resp.status}`);
+            currentReportContent = json.content?.[0]?.text || '';
+        } catch(e) {
+            document.getElementById('report-modal').classList.add('hidden');
+            alert('Error generating report: ' + e.message);
+            return;
+        }
+
+        document.getElementById('report-modal-title').textContent = `Report: ${weekStart} – ${weekEnd}`;
+        document.getElementById('report-modal-content').textContent = currentReportContent;
+
+        // Save to history
+        try {
+            await sb.from('reports').insert({ user_id: currentUser.id, content: currentReportContent, week_start: weekStart, week_end: weekEnd });
+            await loadReportHistory();
+        } catch(e) {}
+    }
+
+    function closeReportModal() {
+        document.getElementById('report-modal').classList.add('hidden');
+        currentReportContent = '';
+    }
+
+    function closeWeekModal() {
+        document.getElementById('report-week-modal').classList.add('hidden');
+    }
+
+    async function copyReport(format) {
+        const text = format === 'text'
+            ? currentReportContent.replace(/#{1,6}\s*/g, '').replace(/\*\*/g, '').replace(/^\*\s/gm, '- ')
+            : currentReportContent;
+        try { await navigator.clipboard.writeText(text); } catch(e) { prompt('Copy this report:', text); }
+    }
+
+    function checkReportCadence() {
+        const key = new Date().toISOString().split('T')[0];
+        if (localStorage.getItem('report_banner_dismissed') === key) return;
+        const now = new Date();
+        if (now.getDay() !== Number(reportSettings.report_day)) return;
+        const [h, m] = (reportSettings.report_time || '09:00').split(':').map(Number);
+        const scheduled = new Date(); scheduled.setHours(h, m, 0, 0);
+        if (now < scheduled) return;
+        document.getElementById('report-cadence-banner').classList.remove('hidden');
+    }
+
+    function dismissReportBanner() {
+        reportBannerDismissed = true;
+        localStorage.setItem('report_banner_dismissed', new Date().toISOString().split('T')[0]);
+        document.getElementById('report-cadence-banner').classList.add('hidden');
+    }
+
+    function openSettingsToReport() {
+        openSettings();
+        setTimeout(() => document.getElementById('report-api-key').scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
     }
 
     // ── Theme ─────────────────────────────────────────────────────────────────
@@ -1457,6 +1807,7 @@
         document.getElementById('task-title-input').value = selectedText;
         document.getElementById('task-notes-input').value = '';
         document.getElementById('task-priority-input').value = 'Medium';
+        document.getElementById('task-report-toggle').checked = true;
         document.getElementById('task-modal').classList.remove('hidden');
         setTimeout(() => document.getElementById('task-title-input').focus(), 50);
     }
@@ -1483,7 +1834,7 @@
 
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
-            closeModal(); closeSettings();
+            closeModal(); closeSettings(); closeReportModal(); closeWeekModal();
             document.getElementById('selection-popup').style.display = 'none';
         }
         if (e.key === 'Enter' && !document.getElementById('task-modal').classList.contains('hidden')) {
