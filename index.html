@@ -545,6 +545,32 @@
         body.light .settings-toggle-btn { background: #f0f0f0; color: #666; }
         body.light .settings-toggle-btn.active { background: #7c3aed; color: #fff; }
 
+        /* ── Natural language task bar ── */
+        .nl-bar { display: flex; gap: 8px; flex-shrink: 0; }
+        .nl-bar.hidden { display: none; }
+        #nl-input {
+            flex: 1;
+            background: #181818;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            color: #ccc;
+            padding: 9px 14px;
+            font-size: 13px;
+            outline: none;
+            font-family: inherit;
+            transition: border-color 0.15s;
+        }
+        #nl-input:focus { border-color: #7c3aed; }
+        #nl-input::placeholder { color: #444; }
+        body.light #nl-input { background: #f5f5f5; color: #333; border-color: #ddd; }
+        body.light #nl-input::placeholder { color: #bbb; }
+        body.light #nl-input:focus { border-color: #7c3aed; }
+        #nl-submit { background: #2a2a2a; color: #777; border: none; border-radius: 8px; padding: 9px 14px; font-size: 14px; cursor: pointer; flex-shrink: 0; transition: background 0.15s, color 0.15s; }
+        #nl-submit:hover { background: #7c3aed; color: #fff; }
+        body.light #nl-submit { background: #e5e5e5; color: #555; }
+        #nl-feedback { font-size: 12px; color: #7c3aed; min-height: 16px; padding: 0 2px; transition: opacity 0.3s; }
+        body.light #nl-feedback { color: #6d28d9; }
+
         /* ── Mobile ── */
         @media (max-width: 640px) {
             body { overflow-y: auto; }
@@ -623,6 +649,12 @@
             <button class="btn-secondary" onclick="signOut()">Sign Out</button>
         </div>
     </div>
+
+    <div class="nl-bar hidden" id="nl-bar">
+        <input id="nl-input" type="text" placeholder="Add a task… try 'Call Frank on Friday high priority' or 'Review campaign deck tomorrow'" onkeydown="if(event.key==='Enter')submitNlTask()">
+        <button id="nl-submit" onclick="submitNlTask()">→</button>
+    </div>
+    <div id="nl-feedback"></div>
 
     <div id="morning-prompt" class="hidden"></div>
     <div id="report-cadence-banner" class="hidden">
@@ -1130,6 +1162,7 @@
     function render() {
         document.getElementById('week-label').textContent = getWeekLabel();
         const isTasksTab = document.getElementById('tab-tasks').classList.contains('active');
+        document.getElementById('nl-bar').classList.toggle('hidden', !isTasksTab);
         if (isTasksTab) {
             renderMorningPrompt();
             const board = document.getElementById('board');
@@ -1862,11 +1895,105 @@ Generate a clean, professional report. Fix any grammar or punctuation issues. Do
         setTimeout(() => document.getElementById('task-title-input').focus(), 50);
     }
 
+    // ── Natural language task input ───────────────────────────────────────────
+
+    async function submitNlTask() {
+        const input = document.getElementById('nl-input');
+        const text  = input.value.trim();
+        if (!text) return;
+
+        const apiKey = localStorage.getItem('report_api_key') || '';
+        const fallback = () => {
+            addingToDay = todayIso(); editingTaskId = null;
+            document.getElementById('modal-title').textContent = 'Add Task';
+            document.getElementById('task-title-input').value = text;
+            document.getElementById('task-notes-input').value = '';
+            document.getElementById('task-priority-input').value = 'Medium';
+            document.getElementById('task-recurrence-input').value = 'none';
+            document.getElementById('task-report-toggle').checked = true;
+            document.getElementById('task-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('task-title-input').focus(), 50);
+            input.value = '';
+        };
+
+        if (!apiKey) { fallback(); return; }
+
+        const systemPrompt = `You are a task parser. Extract task details from natural language input and return ONLY valid JSON, no other text.
+
+Return this exact structure:
+{
+  "title": "task title",
+  "priority": "High" or "Medium" or "Low",
+  "day": "YYYY-MM-DD"
+}
+
+Rules:
+- Default priority is Medium unless specified
+- Default day is today unless specified
+- "tomorrow" = tomorrow's date
+- Day names like "Friday" = the next upcoming Friday
+- If no day mentioned, use today
+- Keep title clean — remove day/priority references from it
+- Today's date is: ${todayIso()}`;
+
+        input.disabled = true;
+        document.getElementById('nl-submit').disabled = true;
+
+        try {
+            const resp = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true'
+                },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 200,
+                    system: systemPrompt,
+                    messages: [{ role: 'user', content: text }]
+                })
+            });
+            const json = await resp.json();
+            if (!resp.ok) throw new Error('api');
+            const parsed = JSON.parse(json.content?.[0]?.text || '');
+            if (!parsed.title || !parsed.day) throw new Error('parse');
+
+            await createTask({
+                title: parsed.title,
+                priority: ['High','Medium','Low'].includes(parsed.priority) ? parsed.priority : 'Medium',
+                day: parsed.day,
+                recurrence: 'none',
+                recurrence_id: null,
+                include_in_report: true
+            });
+            await refresh();
+
+            input.value = '';
+            const [, m, d] = parsed.day.split('-');
+            const label = parsed.day === todayIso() ? 'Today'
+                : parsed.day === (() => { const t=new Date(); t.setDate(t.getDate()+1); return t.toISOString().split('T')[0]; })() ? 'Tomorrow'
+                : new Date(parsed.day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' });
+            const fb = document.getElementById('nl-feedback');
+            fb.textContent = `✓ Task added to ${label}`;
+            fb.style.opacity = '1';
+            setTimeout(() => { fb.style.opacity = '0'; }, 2000);
+        } catch(e) {
+            fallback();
+        } finally {
+            input.disabled = false;
+            document.getElementById('nl-submit').disabled = false;
+            input.focus();
+        }
+    }
+
     // ── Tab switching ─────────────────────────────────────────────────────────
 
     async function switchTab(tab) {
         document.getElementById('tab-tasks').classList.toggle('active', tab === 'tasks');
         document.getElementById('tab-notes').classList.toggle('active', tab === 'notes');
+        document.getElementById('nl-bar').classList.toggle('hidden', tab !== 'tasks');
         if (tab === 'tasks') {
             document.getElementById('board').style.display = viewMode === 'board' ? 'flex' : 'none';
             document.getElementById('list-view').style.display = viewMode === 'list' ? 'flex' : 'none';
