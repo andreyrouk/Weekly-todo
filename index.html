@@ -718,16 +718,20 @@
 
     // ── Date helpers ──────────────────────────────────────────────────────────
 
+    function localIso(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
     function getWeekDays() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const monday = new Date(today);
         monday.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1) + weekOffset * 7);
-        const todayIsoStr = today.toISOString().split('T')[0];
+        const todayIsoStr = localIso(today);
         return Array.from({ length: 7 }, (_, i) => {
             const d = new Date(monday);
             d.setDate(monday.getDate() + i);
-            const iso = d.toISOString().split('T')[0];
+            const iso = localIso(d);
             return {
                 iso,
                 label: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
@@ -742,12 +746,12 @@
         return `${days[0].label} – ${days[6].label}`;
     }
 
-    function todayIso() { return new Date().toISOString().split('T')[0]; }
+    function todayIso() { return localIso(new Date()); }
 
     function yesterdayIso() {
         const d = new Date();
         d.setDate(d.getDate() - 1);
-        return d.toISOString().split('T')[0];
+        return localIso(d);
     }
 
     // ── Render ────────────────────────────────────────────────────────────────
