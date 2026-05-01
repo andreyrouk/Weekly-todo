@@ -1922,6 +1922,17 @@ Generate a clean, professional report. Fix any grammar or punctuation issues. Do
 
         if (!apiKey) { fallback(); return; }
 
+        const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const _base = new Date(); _base.setHours(0,0,0,0);
+        const dayLookup = [];
+        for (let i = 0; i <= 7; i++) {
+            const d = new Date(_base); d.setDate(_base.getDate() + i);
+            dayLookup.push(`  ${dayNames[d.getDay()]} = ${localIso(d)}${i === 0 ? ' (today)' : i === 1 ? ' (tomorrow)' : ''}`);
+        }
+        // dedupe: keep first occurrence of each day name (covers today through +7)
+        const seen = new Set();
+        const dayLines = dayLookup.filter(l => { const n = l.trim().split(' ')[0]; return seen.has(n) ? false : (seen.add(n), true); }).join('\n');
+
         const systemPrompt = `You are a task parser. Extract task details from natural language input and return ONLY valid JSON, no other text.
 
 Return this exact structure:
@@ -1933,12 +1944,10 @@ Return this exact structure:
 
 Rules:
 - Default priority is Medium unless specified
-- Default day is today unless specified
-- "tomorrow" = tomorrow's date
-- Day names like "Friday" = the next upcoming Friday
-- If no day mentioned, use today
+- If no day mentioned, use today's date
 - Keep title clean — remove day/priority references from it
-- Today's date is: ${todayIso()}`;
+- Use the exact dates from this lookup table — do NOT calculate dates yourself:
+${dayLines}`;
 
         input.disabled = true;
         document.getElementById('nl-submit').disabled = true;
