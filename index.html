@@ -1020,6 +1020,101 @@
         setTimeout(() => document.getElementById('task-title-input').focus(), 50);
     }
 
+    // ── Natural language task input ───────────────────────────────────────────
+
+    async function submitNlTask() {
+        const input = document.getElementById('nl-input');
+        const text  = input.value.trim();
+        if (!text) return;
+
+        const apiKey = localStorage.getItem('report_api_key') || '';
+        const fallback = () => {
+            addingToDay = todayIso(); editingTaskId = null;
+            document.getElementById('modal-title').textContent = 'Add Task';
+            document.getElementById('task-title-input').value = text;
+            document.getElementById('task-notes-input').value = '';
+            document.getElementById('task-priority-input').value = 'Medium';
+            document.getElementById('task-recurrence-input').value = 'none';
+            document.getElementById('task-report-toggle').checked = true;
+            document.getElementById('task-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('task-title-input').focus(), 50);
+            input.value = '';
+        };
+
+        if (!apiKey) { fallback(); return; }
+
+        const systemPrompt = `You are a task parser. Extract task details from natural language input and return ONLY valid JSON, no other text.
+
+Return this exact structure:
+{
+  "title": "task title",
+  "priority": "High" or "Medium" or "Low",
+  "day": "YYYY-MM-DD"
+}
+
+Rules:
+- Default priority is Medium unless specified
+- Default day is today unless specified
+- "tomorrow" = tomorrow's date
+- Day names like "Friday" = the next upcoming Friday
+- If no day mentioned, use today
+- Keep title clean — remove day/priority references from it
+- Today's date is: ${todayIso()} (${new Date().toLocaleDateString('en-US', { weekday: 'long' })})
+- The days of the week in order are: Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday
+- "next upcoming Friday" means the very next Friday that hasn't happened yet (if today IS Friday, use today)`;
+
+        input.disabled = true;
+        document.getElementById('nl-submit').disabled = true;
+
+        try {
+            const resp = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true'
+                },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 200,
+                    system: systemPrompt,
+                    messages: [{ role: 'user', content: text }]
+                })
+            });
+            const json = await resp.json();
+            if (!resp.ok) throw new Error('api');
+            const parsed = JSON.parse(json.content?.[0]?.text || '');
+            if (!parsed.title || !parsed.day) throw new Error('parse');
+
+            await createTask({
+                title: parsed.title,
+                priority: ['High','Medium','Low'].includes(parsed.priority) ? parsed.priority : 'Medium',
+                day: parsed.day,
+                recurrence: 'none',
+                recurrence_id: null,
+                include_in_report: true
+            });
+            await refresh();
+
+            input.value = '';
+            const [, m, d] = parsed.day.split('-');
+            const label = parsed.day === todayIso() ? 'Today'
+                : parsed.day === (() => { const t=new Date(); t.setDate(t.getDate()+1); return localIso(t); })() ? 'Tomorrow'
+                : new Date(parsed.day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' });
+            const fb = document.getElementById('nl-feedback');
+            fb.textContent = `✓ Task added to ${label}`;
+            fb.style.opacity = '1';
+            setTimeout(() => { fb.style.opacity = '0'; }, 2000);
+        } catch(e) {
+            fallback();
+        } finally {
+            input.disabled = false;
+            document.getElementById('nl-submit').disabled = false;
+            input.focus();
+        }
+    }
+
     // ── Tab switching ─────────────────────────────────────────────────────────
 
     async function switchTab(tab) {
