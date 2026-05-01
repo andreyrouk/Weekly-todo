@@ -450,32 +450,37 @@
         .morning-btns { display: flex; gap: 8px; flex-wrap: wrap; }
         .user-info { font-size: 12px; color: #666; }
 
-        /* ── Sub-tasks ── */
-        .subtask-section { margin-top: 6px; }
-        .subtask-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
-        .subtask-row input[type=checkbox] { flex-shrink: 0; accent-color: #7c3aed; width: 13px; height: 13px; cursor: pointer; }
-        .subtask-row input[type=text] {
-            flex: 1;
-            background: transparent;
-            border: none;
-            border-bottom: 1px solid #2a2a2a;
-            color: #ccc;
-            font-size: 12px;
-            padding: 2px 4px;
-            outline: none;
-            font-family: inherit;
-            min-width: 0;
-        }
-        .subtask-row input[type=text].done { text-decoration: line-through; color: #555; }
-        .subtask-row input[type=text]:focus { border-bottom-color: #7c3aed; }
-        body.light .subtask-row input[type=text] { color: #333; border-bottom-color: #ddd; }
-        .subtask-row .del-sub { background: transparent; color: #444; border: none; padding: 2px 4px; font-size: 10px; cursor: pointer; flex-shrink: 0; }
-        .subtask-row .del-sub:hover { color: #e74c3c; }
-        .add-subtask-btn { background: transparent; color: #555; border: none; font-size: 11px; padding: 4px 0; cursor: pointer; width: 100%; text-align: left; }
-        .add-subtask-btn:hover { color: #7c3aed; }
+        /* ── Sub-tasks (card) ── */
+        .subtask-section { margin-top: 6px; padding-left: 2px; }
+        .subtask-section.hidden { display: none; }
+        .subtask-row { display: flex; align-items: flex-start; gap: 6px; padding: 3px 0; }
+        .subtask-row input[type=checkbox] { flex-shrink: 0; accent-color: #7c3aed; width: 13px; height: 13px; cursor: pointer; margin-top: 2px; }
+        .subtask-label { flex: 1; font-size: 12px; color: #aaa; line-height: 1.4; word-break: break-word; min-width: 0; }
+        .subtask-label.done { text-decoration: line-through; color: #555; }
+        body.light .subtask-label { color: #555; }
         .subtask-progress { font-size: 10px; color: #7c3aed; font-weight: 600; margin-left: 4px; vertical-align: middle; }
         .task-expand-btn { background: transparent; color: #555; border: none; font-size: 11px; padding: 2px 4px; cursor: pointer; }
         .task-expand-btn:hover { color: #aaa; }
+
+        /* ── Sub-tasks (modal) ── */
+        .modal-subtasks-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+        .modal-subtasks-header label { cursor: pointer; }
+        .modal-subtasks-header span { color: #666; font-size: 12px; transition: color 0.15s; }
+        .modal-subtasks-header:hover span { color: #aaa; }
+        #modal-subtasks-body { padding-top: 6px; }
+        #modal-subtasks-body.hidden { display: none; }
+        .modal-subtask-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+        .modal-subtask-row input[type=text] {
+            flex: 1; background: #2a2a2a; border: 1px solid #333; border-radius: 4px;
+            color: #ccc; font-size: 13px; padding: 5px 8px; outline: none;
+            font-family: inherit; min-width: 0;
+        }
+        .modal-subtask-row input[type=text]:focus { border-color: #7c3aed; }
+        body.light .modal-subtask-row input[type=text] { background: #f0f0f0; color: #111; border-color: #ddd; }
+        .modal-subtask-row .del-sub { background: transparent; color: #444; border: none; padding: 4px 6px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
+        .modal-subtask-row .del-sub:hover { color: #e74c3c; }
+        .add-modal-subtask-btn { background: transparent; color: #7c3aed; border: none; font-size: 12px; padding: 6px 0 2px; cursor: pointer; text-align: left; display: block; opacity: 0.8; }
+        .add-modal-subtask-btn:hover { opacity: 1; }
 
         /* ── List View ── */
         #list-view { flex: 1; overflow-y: auto; display: none; flex-direction: column; padding-bottom: 20px; width: 100%; }
@@ -704,6 +709,16 @@
             <textarea id="task-notes-input" placeholder="Notes (optional)..."></textarea>
         </div>
         <div>
+            <div class="modal-subtasks-header" onclick="toggleModalSubtasksSection()">
+                <label>Sub-tasks</label>
+                <span id="modal-subtasks-arrow">▾</span>
+            </div>
+            <div id="modal-subtasks-body">
+                <div id="modal-subtasks-list"></div>
+                <button class="add-modal-subtask-btn" onclick="addModalSubtask()">+ Add sub-task</button>
+            </div>
+        </div>
+        <div>
             <label>Priority</label>
             <select id="task-priority-input">
                 <option>High</option>
@@ -868,7 +883,8 @@
     let selectedText         = '';
     let authMode             = 'signin';
     let subtasksCache        = {};
-    let expandedTasks        = new Set();
+    let collapsedSubtasks    = new Set();
+    let modalSubtasks        = [];
     let collapsedDays        = new Set(); // stores "iso:open" or "iso:closed" for explicit overrides
     let viewMode             = localStorage.getItem('viewMode') || 'board';
     let reportSettings       = { report_day: 5, report_time: '09:00', tone: 'Professional', format: 'Bullet Points', template: '' };
@@ -936,7 +952,7 @@
         initialized = false; currentUser = null;
         document.getElementById('app').classList.remove('visible');
         document.getElementById('auth-screen').style.display = 'flex';
-        tasks = []; notes = []; subtasksCache = {}; expandedTasks = new Set();
+        tasks = []; notes = []; subtasksCache = {}; collapsedSubtasks = new Set(); modalSubtasks = [];
         reportHistory = []; reportSettings = { report_day: 5, report_time: '09:00', tone: 'Professional', format: 'Bullet Points', template: '' };
         sb.auth.signOut().catch(() => {}); // best-effort server invalidation
     }
@@ -963,7 +979,7 @@
             currentUser = null;
             document.getElementById('app').classList.remove('visible');
             document.getElementById('auth-screen').style.display = 'flex';
-            tasks = []; notes = []; subtasksCache = {}; expandedTasks = new Set();
+            tasks = []; notes = []; subtasksCache = {}; collapsedSubtasks = new Set(); modalSubtasks = [];
             reportHistory = []; reportSettings = { report_day: 5, report_time: '09:00', tone: 'Professional', format: 'Bullet Points', template: '' };
         }
     });
@@ -1003,7 +1019,10 @@
 
     async function createTask(data) {
         const maxPos = tasks.filter(t => t.day === data.day).length;
-        await sb.from('tasks').insert({ ...data, position: maxPos, completed: false, user_id: currentUser.id });
+        const { data: created } = await sb.from('tasks')
+            .insert({ ...data, position: maxPos, completed: false, user_id: currentUser.id })
+            .select().single();
+        return created;
     }
 
     async function updateTask(id, data) {
@@ -1023,6 +1042,22 @@
             .eq('user_id', currentUser.id)
             .order('position', { ascending: true });
         subtasksCache[taskId] = data || [];
+    }
+
+    async function loadAllSubtasks(taskIds) {
+        subtasksCache = {};
+        if (!taskIds.length) return;
+        taskIds.forEach(id => { subtasksCache[id] = []; });
+        try {
+            const { data } = await sb.from('subtasks')
+                .select('*')
+                .in('task_id', taskIds)
+                .eq('user_id', currentUser.id)
+                .order('position', { ascending: true });
+            for (const s of (data || [])) {
+                if (subtasksCache[s.task_id]) subtasksCache[s.task_id].push(s);
+            }
+        } catch(e) {}
     }
 
     async function createSubtask(taskId, title) {
@@ -1319,13 +1354,19 @@
         const recurBadge = t.recurrence && t.recurrence !== 'none'
             ? `<span class="recur-badge" title="${t.recurrence === 'daily' ? 'Repeats daily (Mon–Fri)' : 'Repeats weekly'}">↻</span>`
             : '';
-        const subs = subtasksCache[t.id];
-        const progressBadge = subs && subs.length
+        const subs = subtasksCache[t.id] || [];
+        const hasSubs = subs.length > 0;
+        const progressBadge = hasSubs
             ? `<span class="subtask-progress" id="progress-${t.id}">${subs.filter(s => s.completed).length}/${subs.length}</span>`
             : '';
         const reportBadge = t.include_in_report !== false ? `<span class="report-badge" title="Included in weekly report">📊</span>` : '';
-        const isExpanded = expandedTasks.has(t.id);
-        const subtaskSection = isExpanded ? renderSubtaskSection(t.id) : '';
+        const isExpanded = hasSubs && !collapsedSubtasks.has(t.id);
+        const subtaskRows = hasSubs ? subs.map(s => `
+            <div class="subtask-row" id="sr-${s.id}">
+                <input type="checkbox" ${s.completed ? 'checked' : ''}
+                       onchange="toggleSubtask('${s.id}','${t.id}',this.checked)">
+                <span class="subtask-label${s.completed ? ' done' : ''}">${escHtml(s.title)}</span>
+            </div>`).join('') : '';
         return `
             <div class="task-card priority-${t.priority}${t.completed ? ' completed' : ''}"
                  draggable="true" ondragstart="dragTaskId='${t.id}'" ondragend="dragTaskId=null">
@@ -1334,27 +1375,13 @@
                     <div class="task-title${t.completed ? ' done' : ''}">${escHtml(t.title)}${recurBadge}${progressBadge}${reportBadge}</div>
                 </div>
                 ${t.notes ? `<div class="task-notes">${escHtml(t.notes)}</div>` : ''}
-                ${subtaskSection}
+                ${hasSubs ? `<div class="subtask-section${isExpanded ? '' : ' hidden'}" id="sub-${t.id}">${subtaskRows}</div>` : ''}
                 <div class="task-actions">
-                    <button class="task-expand-btn" onclick="toggleSubtasks('${t.id}')">${isExpanded ? '▼' : '▶'} Sub-tasks</button>
+                    ${hasSubs ? `<button class="task-expand-btn" id="subtask-toggle-${t.id}" onclick="toggleSubtasks('${t.id}')">${isExpanded ? '▾' : '▸'} sub-tasks</button>` : ''}
                     <button onclick="openEditTask('${t.id}')">✎ Edit</button>
                     <button onclick="confirmDelete('${t.id}')">✕ Delete</button>
                 </div>
             </div>`;
-    }
-
-    function renderSubtaskSection(taskId) {
-        const subs = subtasksCache[taskId] || [];
-        const rows = subs.map(s => `
-            <div class="subtask-row" id="sr-${s.id}">
-                <input type="checkbox" ${s.completed ? 'checked' : ''}
-                       onchange="toggleSubtask('${s.id}','${taskId}',this.checked)">
-                <input type="text" value="${escHtml(s.title)}" class="${s.completed ? 'done' : ''}"
-                       onblur="saveSubtaskTitle('${s.id}','${taskId}',this.value)"
-                       onkeydown="handleSubtaskKeydown(event,'${taskId}','${s.id}')">
-                <button class="del-sub" onclick="deleteSubtaskItem('${s.id}','${taskId}')">✕</button>
-            </div>`).join('');
-        return `<div class="subtask-section" id="sub-${taskId}">${rows}<button class="add-subtask-btn" onclick="addSubtask('${taskId}')">+ Add sub-task</button></div>`;
     }
 
     function renderMorningPrompt() {
@@ -1381,30 +1408,17 @@
 
     // ── Sub-task actions ──────────────────────────────────────────────────────
 
-    async function toggleSubtasks(taskId) {
-        if (expandedTasks.has(taskId)) {
-            expandedTasks.delete(taskId);
+    function toggleSubtasks(taskId) {
+        if (collapsedSubtasks.has(taskId)) {
+            collapsedSubtasks.delete(taskId);
         } else {
-            expandedTasks.add(taskId);
-            if (!subtasksCache[taskId]) {
-                try { await loadSubtasks(taskId); } catch(e) { subtasksCache[taskId] = []; }
-            }
+            collapsedSubtasks.add(taskId);
         }
-        renderCurrentView();
-    }
-
-    async function addSubtask(taskId) {
-        let item;
-        try { item = await createSubtask(taskId, ''); } catch(e) {}
-        if (item) subtasksCache[taskId] = [...(subtasksCache[taskId] || []), item];
-        renderCurrentView();
-        setTimeout(() => {
-            const section = document.getElementById(`sub-${taskId}`);
-            if (section) {
-                const inputs = section.querySelectorAll('input[type=text]');
-                if (inputs.length) inputs[inputs.length - 1].focus();
-            }
-        }, 30);
+        const nowCollapsed = collapsedSubtasks.has(taskId);
+        const section = document.getElementById(`sub-${taskId}`);
+        const btn = document.getElementById(`subtask-toggle-${taskId}`);
+        if (section) section.classList.toggle('hidden', nowCollapsed);
+        if (btn) btn.textContent = (nowCollapsed ? '▸' : '▾') + ' sub-tasks';
     }
 
     async function toggleSubtask(id, taskId, checked) {
@@ -1414,7 +1428,10 @@
             if (sub) sub.completed = checked;
         }
         const row = document.getElementById(`sr-${id}`);
-        if (row) { const inp = row.querySelector('input[type=text]'); if (inp) inp.className = checked ? 'done' : ''; }
+        if (row) {
+            const lbl = row.querySelector('.subtask-label');
+            if (lbl) lbl.classList.toggle('done', checked);
+        }
         const badge = document.getElementById(`progress-${taskId}`);
         if (badge && subtasksCache[taskId]) {
             const done = subtasksCache[taskId].filter(s => s.completed).length;
@@ -1422,35 +1439,76 @@
         }
     }
 
-    async function saveSubtaskTitle(id, taskId, title) {
-        title = (title || '').trim();
-        if (subtasksCache[taskId]) {
-            const sub = subtasksCache[taskId].find(s => s.id === id);
-            if (sub) sub.title = title;
-        }
-        if (title) {
-            try { await updateSubtask(id, { title }); } catch(e) {}
+    // ── Modal sub-task actions ────────────────────────────────────────────────
+
+    function renderModalSubtasks() {
+        const list = document.getElementById('modal-subtasks-list');
+        if (!list) return;
+        list.innerHTML = modalSubtasks.map((s, i) => `
+            <div class="modal-subtask-row">
+                <input type="text" value="${escHtml(s.title)}" placeholder="Sub-task…"
+                       oninput="modalSubtasks[${i}].title = this.value"
+                       onkeydown="handleModalSubtaskKey(event,${i})">
+                <button class="del-sub" onclick="removeModalSubtask(${i})">✕</button>
+            </div>`).join('');
+    }
+
+    function addModalSubtask() {
+        modalSubtasks.push({ id: null, title: '', completed: false });
+        renderModalSubtasks();
+        const list = document.getElementById('modal-subtasks-list');
+        if (list) {
+            const inputs = list.querySelectorAll('input[type=text]');
+            if (inputs.length) setTimeout(() => inputs[inputs.length - 1].focus(), 20);
         }
     }
 
-    async function deleteSubtaskItem(id, taskId) {
-        try { await deleteSubtask(id); } catch(e) {}
-        if (subtasksCache[taskId]) subtasksCache[taskId] = subtasksCache[taskId].filter(s => s.id !== id);
-        renderCurrentView();
+    function removeModalSubtask(index) {
+        modalSubtasks.splice(index, 1);
+        renderModalSubtasks();
     }
 
-    function handleSubtaskKeydown(e, taskId, subtaskId) {
+    function handleModalSubtaskKey(e, index) {
         if (e.key === 'Enter') {
             e.preventDefault();
-            const title = e.target.value.trim();
-            if (subtasksCache[taskId]) {
-                const sub = subtasksCache[taskId].find(s => s.id === subtaskId);
-                if (sub) sub.title = title;
-            }
-            if (title) updateSubtask(subtaskId, { title }).catch(() => {});
-            addSubtask(taskId);
+            modalSubtasks[index].title = e.target.value;
+            addModalSubtask();
         }
         if (e.key === 'Escape') e.target.blur();
+    }
+
+    function toggleModalSubtasksSection() {
+        const body = document.getElementById('modal-subtasks-body');
+        const arrow = document.getElementById('modal-subtasks-arrow');
+        const isNowHidden = body.classList.toggle('hidden');
+        arrow.textContent = isNowHidden ? '▸' : '▾';
+    }
+
+    async function syncModalSubtasks(taskId) {
+        const existing = subtasksCache[taskId] || [];
+        const keptIds = new Set(modalSubtasks.filter(s => s.id).map(s => s.id));
+        for (const s of existing) {
+            if (!keptIds.has(s.id)) try { await deleteSubtask(s.id); } catch(e) {}
+        }
+        const newCache = [];
+        let pos = 0;
+        for (const s of modalSubtasks) {
+            const title = (s.title || '').trim();
+            if (!title) continue;
+            if (s.id) {
+                const orig = existing.find(e => e.id === s.id);
+                if (orig && orig.title !== title) try { await updateSubtask(s.id, { title, position: pos }); } catch(e) {}
+                newCache.push({ ...(orig || s), title, position: pos });
+            } else {
+                try {
+                    const created = await createSubtask(taskId, title);
+                    if (created) newCache.push({ ...created, position: pos });
+                } catch(e) {}
+            }
+            pos++;
+        }
+        subtasksCache[taskId] = newCache;
+        collapsedSubtasks.delete(taskId);
     }
 
     // ── Task actions ──────────────────────────────────────────────────────────
@@ -1488,11 +1546,15 @@
         document.getElementById('task-priority-input').value = 'Medium';
         document.getElementById('task-recurrence-input').value = 'none';
         document.getElementById('task-report-toggle').checked = true;
+        modalSubtasks = [];
+        renderModalSubtasks();
+        document.getElementById('modal-subtasks-body').classList.remove('hidden');
+        document.getElementById('modal-subtasks-arrow').textContent = '▾';
         document.getElementById('task-modal').classList.remove('hidden');
         setTimeout(() => document.getElementById('task-title-input').focus(), 50);
     }
 
-    function openEditTask(id) {
+    async function openEditTask(id) {
         const t = tasks.find(t => t.id === id);
         if (!t) return;
         editingTaskId = id;
@@ -1503,11 +1565,23 @@
         document.getElementById('task-priority-input').value = t.priority;
         document.getElementById('task-recurrence-input').value = t.recurrence || 'none';
         document.getElementById('task-report-toggle').checked = t.include_in_report !== false;
+        if (!subtasksCache[id]) {
+            try { await loadSubtasks(id); } catch(e) { subtasksCache[id] = []; }
+        }
+        modalSubtasks = (subtasksCache[id] || []).map(s => ({ id: s.id, title: s.title, completed: s.completed }));
+        renderModalSubtasks();
+        document.getElementById('modal-subtasks-body').classList.remove('hidden');
+        document.getElementById('modal-subtasks-arrow').textContent = '▾';
         document.getElementById('task-modal').classList.remove('hidden');
         setTimeout(() => document.getElementById('task-title-input').focus(), 50);
     }
 
-    function closeModal() { document.getElementById('task-modal').classList.add('hidden'); }
+    function closeModal() {
+        document.getElementById('task-modal').classList.add('hidden');
+        modalSubtasks = [];
+        const list = document.getElementById('modal-subtasks-list');
+        if (list) list.innerHTML = '';
+    }
 
     async function saveTask() {
         const title = document.getElementById('task-title-input').value.trim();
@@ -1521,13 +1595,17 @@
             include_in_report: document.getElementById('task-report-toggle').checked
         };
         if (editingTaskId) {
-            // Assign a recurrence_id if switching from none→recurring on an existing task
             if (recurrence !== 'none' && !editingRecurrenceId) data.recurrence_id = generateId();
             if (recurrence === 'none') data.recurrence_id = null;
             await updateTask(editingTaskId, data);
+            await syncModalSubtasks(editingTaskId);
         } else {
             const recurrenceId = recurrence !== 'none' ? generateId() : null;
-            await createTask({ ...data, day: addingToDay, recurrence_id: recurrenceId });
+            const created = await createTask({ ...data, day: addingToDay, recurrence_id: recurrenceId });
+            if (created?.id) {
+                subtasksCache[created.id] = [];
+                await syncModalSubtasks(created.id);
+            }
         }
         closeModal();
         if (recurrence !== 'none') await generateRecurringTasks();
@@ -2034,7 +2112,11 @@ ${dayLines}`;
 
     // ── Init ──────────────────────────────────────────────────────────────────
 
-    async function refresh() { await loadTasks(); render(); }
+    async function refresh() {
+        await loadTasks();
+        await loadAllSubtasks(tasks.map(t => t.id));
+        render();
+    }
 
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && currentUser && initialized) refresh();
