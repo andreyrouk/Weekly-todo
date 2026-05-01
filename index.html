@@ -1070,7 +1070,7 @@
         const next28 = Array.from({ length: 28 }, (_, i) => {
             const d = new Date(today);
             d.setDate(today.getDate() + i);
-            return { iso: d.toISOString().split('T')[0], dow: d.getDay() };
+            return { iso: localIso(d), dow: d.getDay() };
         });
 
         const toCreate = [];
@@ -1130,11 +1130,11 @@
         today.setHours(0, 0, 0, 0);
         const monday = new Date(today);
         monday.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1) + weekOffset * 7);
-        const todayIsoStr = today.toISOString().split('T')[0];
+        const todayIsoStr = localIso(today);
         return Array.from({ length: 7 }, (_, i) => {
             const d = new Date(monday);
             d.setDate(monday.getDate() + i);
-            const iso = d.toISOString().split('T')[0];
+            const iso = localIso(d);
             return {
                 iso,
                 label: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
@@ -1149,12 +1149,16 @@
         return `${days[0].label} – ${days[6].label}`;
     }
 
-    function todayIso() { return new Date().toISOString().split('T')[0]; }
+    function localIso(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function todayIso() { return localIso(new Date()); }
 
     function yesterdayIso() {
         const d = new Date();
         d.setDate(d.getDate() - 1);
-        return d.toISOString().split('T')[0];
+        return localIso(d);
     }
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -1758,7 +1762,7 @@ Generate a clean, professional report. Fix any grammar or punctuation issues. Do
     }
 
     function checkReportCadence() {
-        const key = new Date().toISOString().split('T')[0];
+        const key = localIso(new Date());
         if (localStorage.getItem('report_banner_dismissed') === key) return;
         const now = new Date();
         if (now.getDay() !== Number(reportSettings.report_day)) return;
@@ -1770,7 +1774,7 @@ Generate a clean, professional report. Fix any grammar or punctuation issues. Do
 
     function dismissReportBanner() {
         reportBannerDismissed = true;
-        localStorage.setItem('report_banner_dismissed', new Date().toISOString().split('T')[0]);
+        localStorage.setItem('report_banner_dismissed', localIso(new Date()));
         document.getElementById('report-cadence-banner').classList.add('hidden');
     }
 
@@ -1973,7 +1977,7 @@ Rules:
             input.value = '';
             const [, m, d] = parsed.day.split('-');
             const label = parsed.day === todayIso() ? 'Today'
-                : parsed.day === (() => { const t=new Date(); t.setDate(t.getDate()+1); return t.toISOString().split('T')[0]; })() ? 'Tomorrow'
+                : parsed.day === (() => { const t=new Date(); t.setDate(t.getDate()+1); return localIso(t); })() ? 'Tomorrow'
                 : new Date(parsed.day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' });
             const fb = document.getElementById('nl-feedback');
             fb.textContent = `✓ Task added to ${label}`;
