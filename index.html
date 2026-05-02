@@ -709,6 +709,9 @@
         }
         body.light .sidebar-logo { color: #111; }
         #sidebar.collapsed .sidebar-logo { justify-content: center; padding: 0 0 14px; }
+        /* Expanded: hide icon, show full logo. Collapsed: hide full logo (via .nav-label), show icon. */
+        #sidebar:not(.collapsed) .sidebar-logo-icon-img { display: none; }
+        #sidebar.collapsed .sidebar-logo-full-img { display: none; }
 
         .sidebar-divider { border: none; border-top: 1px solid #222; margin: 2px 0; flex-shrink: 0; }
         body.light .sidebar-divider { border-top-color: #e5e5e5; }
@@ -909,7 +912,9 @@
 <!-- Auth Screen -->
 <div id="auth-screen">
     <div class="auth-box">
-        <img src="inflowtask-logo.png" alt="inflowtask" style="height:40px; display:block; margin:0 auto 4px;">
+        <div style="background:#fff; border-radius:10px; padding:10px 20px; display:flex; justify-content:center; align-items:center;">
+            <img src="inflowtask-logo.png" alt="inflowtask" style="height:34px; display:block;">
+        </div>
         <p id="auth-subtitle">Sign in to your account</p>
 
         <div class="auth-error" id="auth-error"></div>
@@ -952,7 +957,9 @@
         <button class="sidebar-toggle-btn" id="sidebar-toggle" onclick="toggleSidebar()">‹</button>
         <div class="sidebar-logo">
             <img src="inflowtask-icon.png" alt="inflowtask" class="sidebar-logo-icon-img" style="height:28px; width:28px; object-fit:contain; flex-shrink:0;">
-            <img src="inflowtask-logo.png" alt="inflowtask" class="nav-label sidebar-logo-full-img" style="height:22px; object-fit:contain; max-width:140px;">
+            <div class="nav-label sidebar-logo-full-img" style="background:#fff; border-radius:7px; padding:5px 10px; display:flex; align-items:center;">
+                <img src="inflowtask-logo.png" alt="inflowtask" style="height:20px; object-fit:contain; max-width:130px; display:block;">
+            </div>
         </div>
         <hr class="sidebar-divider">
         <nav class="sidebar-nav">
