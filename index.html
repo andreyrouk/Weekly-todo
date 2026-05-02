@@ -116,10 +116,9 @@
         /* ── App ── */
         #app {
             display: none;
-            flex-direction: column;
+            flex-direction: row;
             height: 100vh;
-            padding: 16px;
-            gap: 12px;
+            overflow: hidden;
         }
 
         #app.visible { display: flex; }
@@ -127,27 +126,9 @@
         .top-bar {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            gap: 8px;
             flex-shrink: 0;
         }
-
-        .tab-bar { display: flex; gap: 4px; }
-
-        .tab-btn {
-            background: transparent;
-            color: #666;
-            border: none;
-            padding: 6px 14px;
-            font-size: 13px;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        .tab-btn.active { background: #7c3aed; color: #fff; }
-        .tab-btn:hover:not(.active) { background: #2a2a2a; color: #aaa; }
-        body.light .tab-btn:hover:not(.active) { background: #e5e5e5; color: #333; }
-
-        .top-bar-right { display: flex; gap: 8px; align-items: center; }
 
         button {
             cursor: pointer;
@@ -561,8 +542,6 @@
         #report-modal .modal { max-width: 600px; width: 95vw; max-height: 82vh; overflow-y: auto; }
         #report-modal-content { white-space: pre-wrap; background: #1a1a1a; padding: 12px; border-radius: 6px; font-family: inherit; font-size: 13px; line-height: 1.6; max-height: 45vh; overflow-y: auto; margin: 0; }
         body.light #report-modal-content { background: #f5f5f5; color: #111; }
-        #settings-modal .modal { max-height: 88vh; overflow-y: auto; }
-
         /* ── Settings toggles ── */
         .settings-label { font-size: 12px; color: #aaa; display: block; margin-bottom: 6px; }
         body.light .settings-label { color: #666; }
@@ -605,7 +584,7 @@
         #nl-feedback { font-size: 12px; color: #7c3aed; min-height: 16px; padding: 0 2px; transition: opacity 0.3s; }
         body.light #nl-feedback { color: #6d28d9; }
 
-        /* ── Avatar dropdown ── */
+        /* ── Avatar ── */
         .avatar-wrap { position: relative; flex-shrink: 0; }
         .avatar {
             width: 32px; height: 32px; border-radius: 50%;
@@ -674,17 +653,242 @@
         .toast.show { opacity: 1; transform: translateY(0); }
         body.light .toast { background: rgba(22,22,22,0.9); }
 
+        /* ── Sidebar layout ── */
+        :root {
+            --sb-expanded: 220px;
+            --sb-collapsed: 56px;
+        }
+
+        #sidebar {
+            width: var(--sb-expanded);
+            flex-shrink: 0;
+            background: #151515;
+            border-right: 1px solid #222;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            transition: width 0.2s ease;
+            z-index: 50;
+        }
+        #sidebar.collapsed { width: var(--sb-collapsed); }
+        body.light #sidebar { background: #f7f7f7; border-right-color: #e0e0e0; }
+
+        .sidebar-toggle-btn {
+            background: transparent;
+            border: none;
+            color: #444;
+            font-size: 14px;
+            padding: 13px 14px;
+            width: 100%;
+            cursor: pointer;
+            text-align: right;
+            flex-shrink: 0;
+            transition: color 0.15s;
+            font-family: inherit;
+            line-height: 1;
+        }
+        .sidebar-toggle-btn:hover { color: #aaa; }
+        #sidebar.collapsed .sidebar-toggle-btn { text-align: center; padding: 13px 0; }
+        body.light .sidebar-toggle-btn { color: #bbb; }
+        body.light .sidebar-toggle-btn:hover { color: #555; }
+
+        .sidebar-logo {
+            padding: 0 14px 14px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        body.light .sidebar-logo { color: #111; }
+        #sidebar.collapsed .sidebar-logo { justify-content: center; padding: 0 0 14px; }
+
+        .sidebar-divider { border: none; border-top: 1px solid #222; margin: 2px 0; flex-shrink: 0; }
+        body.light .sidebar-divider { border-top-color: #e5e5e5; }
+
+        .sidebar-nav { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; flex: 1; overflow-y: auto; }
+        #sidebar.collapsed .sidebar-nav { padding: 6px 6px; }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: #666;
+            padding: 8px 10px;
+            border-radius: 7px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: background 0.12s, color 0.12s;
+            font-family: inherit;
+            flex-shrink: 0;
+            text-align: left;
+        }
+        .nav-item:hover { background: #1e1e1e; color: #ccc; }
+        .nav-item.active { background: #7c3aed; color: #fff; }
+        body.light .nav-item { color: #666; }
+        body.light .nav-item:hover { background: #ebebeb; color: #333; }
+        body.light .nav-item.active { background: #7c3aed; color: #fff; }
+        #sidebar.collapsed .nav-item { justify-content: center; padding: 9px 8px; gap: 0; }
+
+        .nav-icon { font-size: 16px; flex-shrink: 0; width: 20px; display: flex; align-items: center; justify-content: center; }
+        .nav-label { overflow: hidden; text-overflow: ellipsis; }
+        #sidebar.collapsed .nav-label { display: none; }
+
+        /* Tooltips on hover when collapsed */
+        #sidebar.collapsed .nav-item { position: relative; }
+        #sidebar.collapsed .nav-item[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            left: calc(100% + 10px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: #1e1e1e;
+            color: #fff;
+            font-size: 12px;
+            padding: 5px 10px;
+            border-radius: 6px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 9999;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            border: 1px solid #333;
+        }
+        body.light #sidebar.collapsed .nav-item[title]:hover::after {
+            background: #fff;
+            color: #111;
+            border-color: #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+
+        .sidebar-bottom { flex-shrink: 0; padding-bottom: 4px; }
+
+        .sidebar-user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 10px;
+            overflow: hidden;
+            border-top: 1px solid #222;
+        }
+        body.light .sidebar-user { border-top-color: #e5e5e5; }
+        #sidebar.collapsed .sidebar-user { justify-content: center; }
+
+        .sidebar-user-info { flex: 1; min-width: 0; overflow: hidden; }
+        .sidebar-user-email-text { font-size: 11px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        body.light .sidebar-user-email-text { color: #888; }
+        #sidebar.collapsed .sidebar-user-info { display: none; }
+
+        /* ── Main content area ── */
+        #main-content {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            padding: 12px 16px;
+            gap: 12px;
+        }
+
+        /* ── Hamburger (mobile only) ── */
+        #hamburger {
+            display: none;
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 18px;
+            padding: 4px 8px;
+            cursor: pointer;
+            flex-shrink: 0;
+            border-radius: 6px;
+            line-height: 1;
+        }
+        #hamburger:hover { background: #222; color: #ccc; }
+        body.light #hamburger { color: #666; }
+        body.light #hamburger:hover { background: #e5e5e5; color: #333; }
+
+        /* ── Theme toggle button ── */
+        .theme-toggle-btn {
+            background: #2a2a2a;
+            color: #aaa;
+            border: none;
+            border-radius: 6px;
+            padding: 7px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.12s, color 0.12s;
+            font-family: inherit;
+        }
+        .theme-toggle-btn:hover { background: #333; color: #fff; }
+        body.light .theme-toggle-btn { background: #e5e5e5; color: #555; }
+        body.light .theme-toggle-btn:hover { background: #d5d5d5; color: #333; }
+
+        /* ── Section panels (inline views) ── */
+        .section-panel { flex: 1; overflow-y: auto; padding-bottom: 20px; }
+        .section-panel > h2 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+        .section-body { max-width: 600px; display: flex; flex-direction: column; gap: 20px; }
+        .settings-group { display: flex; flex-direction: column; gap: 12px; }
+        .settings-group-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #555;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #222;
+            margin-bottom: 2px;
+        }
+        body.light .settings-group-title { color: #999; border-bottom-color: #e5e5e5; }
+
+        /* ── Mobile sidebar overlay ── */
+        #sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 199;
+        }
+        #sidebar-backdrop.visible { display: block; }
+
         /* ── Mobile ── */
-        @media (max-width: 640px) {
+        @media (max-width: 767px) {
             body { overflow-y: auto; }
 
-            #app { padding: 10px; gap: 8px; height: auto; min-height: 100vh; }
+            #app { flex-direction: column; height: auto; min-height: 100vh; overflow: visible; }
 
-            .top-bar { flex-wrap: wrap; gap: 6px; }
-            .tab-bar { flex: 1; }
-            .top-bar-right { width: 100%; flex-wrap: wrap; gap: 6px; }
-            .week-nav { width: 100%; justify-content: center; order: -1; }
-            .avatar-wrap { margin-left: auto; }
+            #sidebar {
+                position: fixed;
+                left: 0; top: 0;
+                height: 100%;
+                width: var(--sb-expanded) !important;
+                transform: translateX(-100%);
+                transition: transform 0.22s ease;
+                z-index: 200;
+            }
+            #sidebar.mobile-open { transform: translateX(0); }
+            .sidebar-toggle-btn { display: none; }
+            #sidebar.collapsed .nav-label { display: block; }
+            #sidebar.collapsed .nav-item { justify-content: flex-start; padding: 8px 10px; gap: 10px; }
+            #sidebar.collapsed .sidebar-nav { padding: 6px 8px; }
+            #sidebar.collapsed .sidebar-logo { justify-content: flex-start; padding: 0 14px 14px; }
+            #sidebar.collapsed .sidebar-user { justify-content: flex-start; }
+            #sidebar.collapsed .sidebar-user-info { display: block; }
+
+            #main-content { height: auto; min-height: 100vh; overflow: visible; }
+
+            #hamburger { display: flex; align-items: center; justify-content: center; }
 
             .board { overflow-x: auto; }
             .day-col { min-width: 160px; }
@@ -692,6 +896,9 @@
             #notes-panel.active { flex-direction: column; }
             .notes-list { width: 100%; max-height: 200px; flex-shrink: 0; }
             .note-editor { min-height: 50vh; }
+
+            .week-nav span { min-width: 130px; }
+            .section-body { max-width: 100%; }
         }
     </style>
 </head>
@@ -737,71 +944,202 @@
 
 <!-- Main App -->
 <div id="app">
-    <div class="top-bar">
-        <div class="tab-bar">
-            <button class="tab-btn active" id="tab-tasks" onclick="switchTab('tasks')">📋 Tasks</button>
-            <button class="tab-btn" id="tab-notes" onclick="switchTab('notes')">📝 Meeting Notes</button>
+
+    <!-- Sidebar -->
+    <aside id="sidebar">
+        <button class="sidebar-toggle-btn" id="sidebar-toggle" onclick="toggleSidebar()">‹</button>
+        <div class="sidebar-logo">
+            <span style="flex-shrink:0;">✅</span>
+            <span class="nav-label">Weekly Todo</span>
         </div>
-        <div class="top-bar-right">
+        <hr class="sidebar-divider">
+        <nav class="sidebar-nav">
+            <button class="nav-item active" id="nav-tasks" onclick="switchTab('tasks')" title="Tasks">
+                <span class="nav-icon">📋</span>
+                <span class="nav-label">Tasks</span>
+            </button>
+            <button class="nav-item" id="nav-notes" onclick="switchTab('notes')" title="Meeting Notes">
+                <span class="nav-icon">📝</span>
+                <span class="nav-label">Meeting Notes</span>
+            </button>
+            <button class="nav-item" id="nav-reports" onclick="switchTab('reports')" title="Reports">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">Reports</span>
+            </button>
+            <button class="nav-item" id="nav-settings" onclick="switchTab('settings')" title="Settings">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-label">Settings</span>
+            </button>
+        </nav>
+        <div class="sidebar-bottom">
+            <div class="sidebar-user">
+                <div class="avatar" id="user-avatar"></div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-email-text" id="sidebar-user-email"></div>
+                </div>
+            </div>
+            <div class="sidebar-nav" style="padding-top:0; flex:none;">
+                <button class="nav-item" onclick="signOut()" title="Sign Out">
+                    <span class="nav-icon">↩</span>
+                    <span class="nav-label">Sign Out</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Mobile overlay backdrop -->
+    <div id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+
+    <!-- Main content -->
+    <div id="main-content">
+        <div class="top-bar">
+            <button id="hamburger" onclick="openMobileSidebar()">☰</button>
             <div class="week-nav" id="week-nav">
                 <button class="btn-secondary" onclick="changeWeek(-1)">← Prev</button>
                 <span id="week-label"></span>
                 <button class="btn-secondary" onclick="changeWeek(1)">Next →</button>
             </div>
-            <div class="avatar-wrap" id="avatar-wrap">
-                <div class="avatar" id="user-avatar" onclick="toggleAvatarDropdown()"></div>
-                <div class="avatar-dropdown hidden" id="avatar-dropdown">
-                    <button onclick="closeAvatarDropdown();openSettings()">⚙ Settings</button>
-                    <button onclick="closeAvatarDropdown();signOut()">Sign Out</button>
+            <div style="flex:1;"></div>
+            <button class="theme-toggle-btn" id="theme-btn" onclick="cycleTheme()" title="Toggle theme">🌙</button>
+        </div>
+
+        <div class="nl-bar hidden" id="nl-bar">
+            <div class="nl-label">⚡ Quick Add</div>
+            <div class="nl-input-row">
+                <input id="nl-input" type="text" placeholder="Task title, day, priority…" onkeydown="if(event.key==='Enter')submitNlTask()">
+                <button id="nl-submit" onclick="submitNlTask()">→</button>
+            </div>
+            <div class="nl-hint">Try: 'Review campaign deck tomorrow high priority' or 'Call Frank on Friday'</div>
+        </div>
+        <div id="nl-feedback"></div>
+
+        <div id="morning-prompt" class="hidden"></div>
+        <div id="report-cadence-banner" class="hidden">
+            <div class="morning-card">
+                <p>📊 <strong>Ready to generate your weekly report?</strong></p>
+                <div class="morning-btns">
+                    <button class="btn-primary" onclick="dismissReportBanner(); switchTab('reports');">Generate Report</button>
+                    <button class="btn-secondary" onclick="dismissReportBanner()">Dismiss</button>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="nl-bar hidden" id="nl-bar">
-        <div class="nl-label">⚡ Quick Add</div>
-        <div class="nl-input-row">
-            <input id="nl-input" type="text" placeholder="Task title, day, priority…" onkeydown="if(event.key==='Enter')submitNlTask()">
-            <button id="nl-submit" onclick="submitNlTask()">→</button>
-        </div>
-        <div class="nl-hint">Try: 'Review campaign deck tomorrow high priority' or 'Call Frank on Friday'</div>
-    </div>
-    <div id="nl-feedback"></div>
+        <div class="board" id="board"></div>
+        <div id="list-view"></div>
 
-    <div id="morning-prompt" class="hidden"></div>
-    <div id="report-cadence-banner" class="hidden">
-        <div class="morning-card">
-            <p>📊 <strong>Ready to generate your weekly report?</strong></p>
-            <div class="morning-btns">
-                <button class="btn-primary" onclick="dismissReportBanner(); openSettingsToReport();">Generate Report</button>
-                <button class="btn-secondary" onclick="dismissReportBanner()">Dismiss</button>
+        <div id="notes-panel">
+            <div class="notes-list" id="notes-list">
+                <button class="btn-primary" onclick="newNote()" style="margin-bottom:4px;">+ New Note</button>
+                <input type="text" id="note-search" class="note-search-input" placeholder="Search notes..." oninput="renderNotes()">
+                <div id="note-items"></div>
+            </div>
+            <div class="note-editor" id="note-editor">
+                <div class="note-editor-header">
+                    <input type="text" id="note-title-input" placeholder="Meeting title..." oninput="autoSaveNote()">
+                    <label class="note-date-wrapper">
+                        <span id="note-date-display" class="note-date-display">—</span>
+                        <input type="date" id="note-date-input" oninput="autoSaveNote()">
+                    </label>
+                    <button class="btn-secondary" onclick="closeNote()">✕ Close</button>
+                    <button class="btn-secondary" onclick="deleteNote()">Delete</button>
+                </div>
+                <textarea id="note-content" placeholder="Type your meeting notes here...&#10;&#10;Select any text to turn it into a task." oninput="autoSaveNote()"></textarea>
             </div>
         </div>
-    </div>
 
-    <div class="board" id="board"></div>
-    <div id="list-view"></div>
-
-    <div id="notes-panel">
-        <div class="notes-list" id="notes-list">
-            <button class="btn-primary" onclick="newNote()" style="margin-bottom:4px;">+ New Note</button>
-            <input type="text" id="note-search" class="note-search-input" placeholder="Search notes..." oninput="renderNotes()">
-            <div id="note-items"></div>
-        </div>
-        <div class="note-editor" id="note-editor">
-            <div class="note-editor-header">
-                <input type="text" id="note-title-input" placeholder="Meeting title..." oninput="autoSaveNote()">
-                <label class="note-date-wrapper">
-                    <span id="note-date-display" class="note-date-display">—</span>
-                    <input type="date" id="note-date-input" oninput="autoSaveNote()">
-                </label>
-                <button class="btn-secondary" onclick="closeNote()">✕ Close</button>
-                <button class="btn-secondary" onclick="deleteNote()">Delete</button>
+        <!-- Reports section (inline panel) -->
+        <div id="reports-section" class="section-panel hidden">
+            <h2>Reports</h2>
+            <div class="section-body">
+                <div class="settings-group">
+                    <div class="settings-group-title">Configuration</div>
+                    <div style="display:flex; gap:8px;">
+                        <div style="flex:1;">
+                            <label class="settings-sublabel">Report Day</label>
+                            <select id="report-day-input" class="settings-input">
+                                <option value="1">Monday</option>
+                                <option value="2">Tuesday</option>
+                                <option value="3">Wednesday</option>
+                                <option value="4">Thursday</option>
+                                <option value="5" selected>Friday</option>
+                                <option value="6">Saturday</option>
+                                <option value="0">Sunday</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;">
+                            <label class="settings-sublabel">Report Time</label>
+                            <input type="time" id="report-time-input" value="09:00" class="settings-input">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="settings-sublabel">Tone</label>
+                        <select id="report-tone-input" class="settings-input">
+                            <option>Professional</option>
+                            <option>Formal</option>
+                            <option>Casual</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="settings-sublabel">Format</label>
+                        <select id="report-format-input" class="settings-input">
+                            <option>Bullet Points</option>
+                            <option>Plain Paragraphs</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="settings-sublabel">Template</label>
+                        <textarea id="report-template-input" rows="4" class="settings-input" style="resize:vertical; min-height:70px;" placeholder="Paste an example of a previous report or describe what you want. Claude will follow this structure every time."></textarea>
+                        <div style="display:flex; gap:4px; margin-top:5px; flex-wrap:wrap;">
+                            <button class="btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="setReportTemplate('marketing')">Use Marketing Template</button>
+                            <button class="btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="setReportTemplate('general')">Use General Template</button>
+                            <button class="btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="setReportTemplate('engineering')">Use Engineering Template</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <div class="settings-group-title">Generate</div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn-primary" onclick="openGenerateReport()">📊 Generate Report</button>
+                        <button class="btn-secondary" onclick="saveReportSettings().then(() => showToast('✓ Report settings saved'))">Save Settings</button>
+                    </div>
+                    <div id="report-history-list"></div>
+                </div>
             </div>
-            <textarea id="note-content" placeholder="Type your meeting notes here...&#10;&#10;Select any text to turn it into a task." oninput="autoSaveNote()"></textarea>
         </div>
-    </div>
-</div>
+
+        <!-- Settings section (inline panel) -->
+        <div id="settings-section" class="section-panel hidden">
+            <h2>Settings</h2>
+            <div class="section-body">
+                <div class="settings-group">
+                    <div class="settings-group-title">General</div>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+                        <input type="checkbox" id="weekends-toggle" style="width:auto; accent-color:#7c3aed;">
+                        Show weekends as active days
+                    </label>
+                </div>
+                <div class="settings-group">
+                    <div class="settings-group-title">View</div>
+                    <div class="settings-toggle-group">
+                        <button class="settings-toggle-btn" id="settings-board-btn" onclick="settingsSetView('board')">⊞ Board</button>
+                        <button class="settings-toggle-btn" id="settings-list-btn" onclick="settingsSetView('list')">☰ List</button>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <div class="settings-group-title">Theme</div>
+                    <div class="settings-toggle-group">
+                        <button class="settings-toggle-btn" id="settings-dark-btn" onclick="settingsSetTheme('dark')">🌙 Dark</button>
+                        <button class="settings-toggle-btn" id="settings-light-btn" onclick="settingsSetTheme('light')">☀ Light</button>
+                    </div>
+                </div>
+                <div>
+                    <button class="btn-primary" style="align-self:flex-start;" onclick="saveGeneralSettings()">Save</button>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /#main-content -->
+</div><!-- /#app -->
 
 <!-- Task Modal -->
 <div id="task-modal" class="modal-overlay hidden">
@@ -850,86 +1188,6 @@
         <div class="modal-btns">
             <button class="btn-secondary" onclick="closeModal()">Cancel</button>
             <button class="btn-primary" onclick="saveTask()">Save</button>
-        </div>
-    </div>
-</div>
-
-<!-- Settings Modal -->
-<div id="settings-modal" class="modal-overlay hidden">
-    <div class="modal">
-        <h2>Settings</h2>
-        <div>
-            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                <input type="checkbox" id="weekends-toggle" style="width:auto;">
-                Show weekends as active days
-            </label>
-        </div>
-        <div>
-            <label class="settings-label">View</label>
-            <div class="settings-toggle-group">
-                <button class="settings-toggle-btn" id="settings-board-btn" onclick="settingsSetView('board')">⊞ Board</button>
-                <button class="settings-toggle-btn" id="settings-list-btn" onclick="settingsSetView('list')">☰ List</button>
-            </div>
-        </div>
-        <div>
-            <label class="settings-label">Theme</label>
-            <div class="settings-toggle-group">
-                <button class="settings-toggle-btn" id="settings-dark-btn" onclick="settingsSetTheme('dark')">🌙 Dark</button>
-                <button class="settings-toggle-btn" id="settings-light-btn" onclick="settingsSetTheme('light')">☀ Light</button>
-            </div>
-        </div>
-        <hr class="settings-divider">
-        <div>
-            <label class="settings-label">📊 Report Settings</label>
-            <div style="display:flex; flex-direction:column; gap:10px;">
-                <div style="display:flex; gap:8px;">
-                    <div style="flex:1;">
-                        <label class="settings-sublabel">Report Day</label>
-                        <select id="report-day-input" class="settings-input">
-                            <option value="1">Monday</option>
-                            <option value="2">Tuesday</option>
-                            <option value="3">Wednesday</option>
-                            <option value="4">Thursday</option>
-                            <option value="5" selected>Friday</option>
-                            <option value="6">Saturday</option>
-                            <option value="0">Sunday</option>
-                        </select>
-                    </div>
-                    <div style="flex:1;">
-                        <label class="settings-sublabel">Report Time</label>
-                        <input type="time" id="report-time-input" value="09:00" class="settings-input">
-                    </div>
-                </div>
-                <div>
-                    <label class="settings-sublabel">Tone</label>
-                    <select id="report-tone-input" class="settings-input">
-                        <option>Professional</option>
-                        <option>Formal</option>
-                        <option>Casual</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="settings-sublabel">Format</label>
-                    <select id="report-format-input" class="settings-input">
-                        <option>Bullet Points</option>
-                        <option>Plain Paragraphs</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="settings-sublabel">Template</label>
-                    <textarea id="report-template-input" rows="4" class="settings-input" style="resize:vertical; min-height:70px;" placeholder="Paste an example of a previous report or describe what you want. Claude will follow this structure every time."></textarea>
-                    <div style="display:flex; gap:4px; margin-top:5px; flex-wrap:wrap;">
-                        <button class="btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="setReportTemplate('marketing')">Use Marketing Template</button>
-                        <button class="btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="setReportTemplate('general')">Use General Template</button>
-                        <button class="btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="setReportTemplate('engineering')">Use Engineering Template</button>
-                    </div>
-                </div>
-                <button class="btn-primary" onclick="openGenerateReport()">📊 Generate Report</button>
-                <div id="report-history-list"></div>
-            </div>
-        </div>
-        <div class="modal-btns">
-            <button class="btn-primary" onclick="saveSettings()">Done</button>
         </div>
     </div>
 </div>
@@ -996,6 +1254,8 @@
     let reportBannerDismissed = false;
     let currentReportContent = '';
     let currentReportWeekOffset = 0;
+    let currentTab           = 'tasks';
+    let sidebarCollapsed     = localStorage.getItem('sidebarCollapsed') === 'true';
 
     function getInitials(email) {
         const name = (email || '').split('@')[0];
@@ -1003,23 +1263,79 @@
         return (parts.length >= 2 ? parts[0][0] + parts[1][0] : name.slice(0, 2)).toUpperCase();
     }
 
-    function toggleAvatarDropdown() {
-        const dd = document.getElementById('avatar-dropdown');
-        dd.classList.toggle('hidden');
-        if (!dd.classList.contains('hidden')) {
-            setTimeout(() => {
-                document.addEventListener('click', function outerClick(e) {
-                    if (!document.getElementById('avatar-wrap').contains(e.target)) {
-                        dd.classList.add('hidden');
-                        document.removeEventListener('click', outerClick);
-                    }
-                });
-            }, 0);
+    // ── Sidebar ───────────────────────────────────────────────────────────────
+
+    function initSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const toggle  = document.getElementById('sidebar-toggle');
+        if (sidebarCollapsed) {
+            sidebar.classList.add('collapsed');
+            toggle.textContent = '›';
+        } else {
+            toggle.textContent = '‹';
         }
     }
 
-    function closeAvatarDropdown() {
-        document.getElementById('avatar-dropdown').classList.add('hidden');
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const toggle  = document.getElementById('sidebar-toggle');
+        sidebarCollapsed = !sidebarCollapsed;
+        sidebar.classList.toggle('collapsed', sidebarCollapsed);
+        toggle.textContent = sidebarCollapsed ? '›' : '‹';
+        localStorage.setItem('sidebarCollapsed', sidebarCollapsed);
+    }
+
+    function openMobileSidebar() {
+        document.getElementById('sidebar').classList.add('mobile-open');
+        document.getElementById('sidebar-backdrop').classList.add('visible');
+    }
+
+    function closeMobileSidebar() {
+        document.getElementById('sidebar').classList.remove('mobile-open');
+        document.getElementById('sidebar-backdrop').classList.remove('visible');
+    }
+
+    function cycleTheme() {
+        const isLight = document.body.classList.contains('light');
+        settingsSetTheme(isLight ? 'dark' : 'light');
+        updateThemeBtn();
+    }
+
+    function updateThemeBtn() {
+        const isLight = document.body.classList.contains('light');
+        const btn = document.getElementById('theme-btn');
+        if (btn) btn.textContent = isLight ? '☀' : '🌙';
+    }
+
+    function initUI() {
+        initSidebar();
+        updateThemeBtn();
+        switchTab('tasks');
+    }
+
+    function syncSettingsSection() {
+        document.getElementById('weekends-toggle').checked = settings.weekends_active;
+        const isLight = document.body.classList.contains('light');
+        document.getElementById('settings-dark-btn').classList.toggle('active', !isLight);
+        document.getElementById('settings-light-btn').classList.toggle('active', isLight);
+        document.getElementById('settings-board-btn').classList.toggle('active', viewMode === 'board');
+        document.getElementById('settings-list-btn').classList.toggle('active', viewMode === 'list');
+    }
+
+    function syncReportsSection() {
+        document.getElementById('report-day-input').value = reportSettings.report_day;
+        document.getElementById('report-time-input').value = reportSettings.report_time;
+        document.getElementById('report-tone-input').value = reportSettings.tone;
+        document.getElementById('report-format-input').value = reportSettings.format;
+        document.getElementById('report-template-input').value = reportSettings.template;
+        renderReportHistory();
+    }
+
+    async function saveGeneralSettings() {
+        settings.weekends_active = document.getElementById('weekends-toggle').checked;
+        await saveSetting('weekends_active', settings.weekends_active ? '1' : '0');
+        showToast('✓ Settings saved');
+        render();
     }
 
     function showToast(msg) {
@@ -1107,7 +1423,10 @@
             document.getElementById('app').classList.add('visible');
             const email = currentUser.email || '';
             document.getElementById('user-avatar').textContent = getInitials(email);
+            const emailEl = document.getElementById('sidebar-user-email');
+            if (emailEl) emailEl.textContent = email;
             applyTheme();
+            initUI();
             if (!initialized) {
                 initialized = true;
                 try { await withTimeout(loadSettings()); } catch (e) {}
@@ -1343,7 +1662,7 @@
 
     function render() {
         document.getElementById('week-label').textContent = getWeekLabel();
-        const isTasksTab = document.getElementById('tab-tasks').classList.contains('active');
+        const isTasksTab = currentTab === 'tasks';
         document.getElementById('nl-bar').classList.toggle('hidden', !isTasksTab);
         if (isTasksTab) {
             renderMorningPrompt();
@@ -1791,30 +2110,11 @@
 
     // ── Settings ──────────────────────────────────────────────────────────────
 
-    function openSettings() {
-        document.getElementById('weekends-toggle').checked = settings.weekends_active;
-        const isLight = document.body.classList.contains('light');
-        document.getElementById('settings-dark-btn').classList.toggle('active', !isLight);
-        document.getElementById('settings-light-btn').classList.toggle('active', isLight);
-        document.getElementById('settings-board-btn').classList.toggle('active', viewMode === 'board');
-        document.getElementById('settings-list-btn').classList.toggle('active', viewMode === 'list');
-        // Report settings
-        document.getElementById('report-day-input').value = reportSettings.report_day;
-        document.getElementById('report-time-input').value = reportSettings.report_time;
-        document.getElementById('report-tone-input').value = reportSettings.tone;
-        document.getElementById('report-format-input').value = reportSettings.format;
-        document.getElementById('report-template-input').value = reportSettings.template;
-        renderReportHistory();
-        document.getElementById('settings-modal').classList.remove('hidden');
-    }
-
-    function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
+    function openSettings() { switchTab('settings'); }
+    function closeSettings() { /* settings is now an inline panel — no-op */ }
 
     async function saveSettings() {
-        settings.weekends_active = document.getElementById('weekends-toggle').checked;
-        await saveSetting('weekends_active', settings.weekends_active ? '1' : '0');
-        try { await saveReportSettings(); } catch(e) {}
-        closeSettings(); render();
+        await saveGeneralSettings();
     }
 
     function settingsSetView(mode) {
@@ -1829,6 +2129,7 @@
         localStorage.setItem('theme', theme);
         document.getElementById('settings-dark-btn').classList.toggle('active', !isLight);
         document.getElementById('settings-light-btn').classList.toggle('active', isLight);
+        updateThemeBtn();
     }
 
     // ── Report ────────────────────────────────────────────────────────────────
@@ -1951,7 +2252,6 @@
         document.getElementById('report-modal-title').textContent = 'Generating…';
         document.getElementById('report-modal-content').textContent = '⏳ Calling Claude…';
         document.getElementById('report-modal').classList.remove('hidden');
-        if (!document.getElementById('settings-modal').classList.contains('hidden')) closeSettings();
 
         const prompt = `You are a professional writing assistant. Generate a weekly accomplishment report based on the following completed tasks.
 
@@ -2025,14 +2325,14 @@ Generate a clean, professional report. Fix any grammar or punctuation issues. Do
     }
 
     function openSettingsToReport() {
-        openSettings();
-        setTimeout(() => document.getElementById('report-day-input').scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+        switchTab('reports');
     }
 
     // ── Theme ─────────────────────────────────────────────────────────────────
 
     function applyTheme() {
         if (localStorage.getItem('theme') === 'light') document.body.classList.add('light');
+        updateThemeBtn();
     }
 
     // ── Notes ─────────────────────────────────────────────────────────────────
@@ -2237,27 +2537,41 @@ ${dayLines}`;
     // ── Tab switching ─────────────────────────────────────────────────────────
 
     async function switchTab(tab) {
-        document.getElementById('tab-tasks').classList.toggle('active', tab === 'tasks');
-        document.getElementById('tab-notes').classList.toggle('active', tab === 'notes');
-        document.getElementById('nl-bar').classList.toggle('hidden', tab !== 'tasks');
-        if (tab === 'tasks') {
-            document.getElementById('board').style.display = viewMode === 'board' ? 'flex' : 'none';
-            document.getElementById('list-view').style.display = viewMode === 'list' ? 'flex' : 'none';
-        } else {
-            document.getElementById('board').style.display = 'none';
-            document.getElementById('list-view').style.display = 'none';
-        }
-        document.getElementById('morning-prompt').style.display = tab === 'tasks' ? 'block' : 'none';
-        document.getElementById('week-nav').style.display = tab === 'tasks' ? 'flex' : 'none';
+        currentTab = tab;
+
+        // Nav items
+        ['tasks', 'notes', 'reports', 'settings'].forEach(t => {
+            document.getElementById(`nav-${t}`)?.classList.toggle('active', t === tab);
+        });
+
+        const isTask = tab === 'tasks';
+        document.getElementById('nl-bar').classList.toggle('hidden', !isTask);
+        document.getElementById('nl-feedback').style.display = isTask ? '' : 'none';
+        document.getElementById('board').style.display = isTask && viewMode === 'board' ? 'flex' : 'none';
+        document.getElementById('list-view').style.display = isTask && viewMode === 'list' ? 'flex' : 'none';
+        document.getElementById('morning-prompt').style.display = isTask ? '' : 'none';
+        document.getElementById('week-nav').style.display = isTask ? 'flex' : 'none';
         document.getElementById('notes-panel').classList.toggle('active', tab === 'notes');
+        document.getElementById('reports-section').classList.toggle('hidden', tab !== 'reports');
+        document.getElementById('settings-section').classList.toggle('hidden', tab !== 'settings');
+
+        if (!reportBannerDismissed) {
+            document.getElementById('report-cadence-banner').classList.toggle('hidden', !isTask);
+        }
+
         if (tab === 'notes') { await loadNotes(); renderNotes(); }
+        if (tab === 'reports') { syncReportsSection(); }
+        if (tab === 'settings') { syncSettingsSection(); }
+
+        closeMobileSidebar();
     }
 
     // ── Keyboard ──────────────────────────────────────────────────────────────
 
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
-            closeModal(); closeSettings(); closeReportModal(); closeWeekModal();
+            closeModal(); closeReportModal(); closeWeekModal();
+            closeMobileSidebar();
             document.getElementById('selection-popup').style.display = 'none';
         }
         if (e.key === 'Enter' && !document.getElementById('task-modal').classList.contains('hidden')) {
