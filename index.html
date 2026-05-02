@@ -551,8 +551,14 @@
         body.light .settings-toggle-btn.active { background: #7c3aed; color: #fff; }
 
         /* ── Natural language task bar ── */
-        .nl-bar { display: flex; gap: 8px; flex-shrink: 0; }
+        .nl-bar { display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; padding-bottom: 12px; border-bottom: 1px solid #1e1e1e; }
         .nl-bar.hidden { display: none; }
+        .nl-label { font-size: 11px; font-weight: 600; color: #555; letter-spacing: 0.05em; text-transform: uppercase; }
+        body.light .nl-label { color: #999; }
+        .nl-input-row { display: flex; gap: 8px; }
+        .nl-hint { font-size: 11px; color: #323232; line-height: 1.4; }
+        body.light .nl-hint { color: #bbb; }
+        body.light .nl-bar { border-bottom-color: #e5e5e5; }
         #nl-input {
             flex: 1;
             background: #181818;
@@ -575,6 +581,39 @@
         body.light #nl-submit { background: #e5e5e5; color: #555; }
         #nl-feedback { font-size: 12px; color: #7c3aed; min-height: 16px; padding: 0 2px; transition: opacity 0.3s; }
         body.light #nl-feedback { color: #6d28d9; }
+
+        /* ── Today badge ── */
+        .today-badge { display: block; font-size: 9px; font-weight: 700; color: #7c3aed; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3px; }
+
+        /* ── Empty column placeholder ── */
+        .empty-col { text-align: center; color: #2a2a2a; font-size: 12px; padding: 10px 0 2px; font-style: italic; }
+        body.light .empty-col { color: #ccc; }
+
+        /* ── Skeleton loading ── */
+        @keyframes skeleton-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+        .skeleton-card { background: #222; border-radius: 6px; height: 54px; border-left: 3px solid #2a2a2a; animation: skeleton-pulse 1.4s ease-in-out infinite; }
+        .skeleton-card.short { height: 36px; animation-delay: 0.2s; }
+        .skeleton-card.shorter { height: 28px; animation-delay: 0.4s; }
+        body.light .skeleton-card { background: #ebebeb; border-left-color: #ddd; }
+
+        /* ── Toast notifications ── */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 6px; z-index: 9999; pointer-events: none; }
+        .toast {
+            background: rgba(16,16,16,0.93);
+            color: #e8e8e8;
+            font-size: 12px;
+            padding: 7px 15px;
+            border-radius: 99px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.45);
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.18s, transform 0.18s;
+            white-space: nowrap;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        body.light .toast { background: rgba(22,22,22,0.9); }
 
         /* ── Mobile ── */
         @media (max-width: 640px) {
@@ -656,8 +695,12 @@
     </div>
 
     <div class="nl-bar hidden" id="nl-bar">
-        <input id="nl-input" type="text" placeholder="Add a task… try 'Call Frank on Friday high priority' or 'Review campaign deck tomorrow'" onkeydown="if(event.key==='Enter')submitNlTask()">
-        <button id="nl-submit" onclick="submitNlTask()">→</button>
+        <div class="nl-label">⚡ Quick Add</div>
+        <div class="nl-input-row">
+            <input id="nl-input" type="text" placeholder="Task title, day, priority…" onkeydown="if(event.key==='Enter')submitNlTask()">
+            <button id="nl-submit" onclick="submitNlTask()">→</button>
+        </div>
+        <div class="nl-hint">Try: 'Review campaign deck tomorrow high priority' or 'Call Frank on Friday'</div>
     </div>
     <div id="nl-feedback"></div>
 
@@ -885,6 +928,7 @@
     let subtasksCache        = {};
     let collapsedSubtasks    = new Set();
     let modalSubtasks        = [];
+    let isLoading            = false;
     let collapsedDays        = new Set(); // stores "iso:open" or "iso:closed" for explicit overrides
     let viewMode             = localStorage.getItem('viewMode') || 'board';
     let reportSettings       = { report_day: 5, report_time: '09:00', tone: 'Professional', format: 'Bullet Points', template: '' };
@@ -892,6 +936,20 @@
     let reportBannerDismissed = false;
     let currentReportContent = '';
     let currentReportWeekOffset = 0;
+
+    function showToast(msg) {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = msg;
+        container.appendChild(toast);
+        requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add('show')));
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 220);
+        }, 2000);
+    }
 
     function generateId() {
         return (typeof crypto !== 'undefined' && crypto.randomUUID)
@@ -1235,14 +1293,6 @@
         const priScore = p => p === 'High' ? 1 : p === 'Low' ? 3 : 2;
         getWeekDays().forEach(day => {
             const active = !day.isWeekend || settings.weekends_active;
-            const dayTasks = tasks
-                .filter(t => t.day === day.iso)
-                .sort((a, b) => {
-                    if (a.completed !== b.completed) return a.completed ? 1 : -1;
-                    return priScore(a.priority) - priScore(b.priority);
-                });
-            const incomplete = dayTasks.filter(t => !t.completed).length;
-
             const col = document.createElement('div');
             col.className = `day-col${day.isToday ? ' today' : ''}${!active ? ' inactive' : ''}`;
             col.dataset.day = day.iso;
@@ -1251,18 +1301,45 @@
                 e.preventDefault();
                 if (dragTaskId) {
                     await updateTask(dragTaskId, { day: day.iso, completed: false });
+                    showToast(`✓ Task moved to ${day.label.split(',')[0]}`);
                     await refresh();
                 }
             });
 
+            if (isLoading) {
+                col.innerHTML = `
+                    <div class="day-header">
+                        ${day.isToday ? '<span class="today-badge">Today</span>' : ''}
+                        ${day.label}
+                    </div>
+                    <div class="tasks">
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card short"></div>
+                        <div class="skeleton-card shorter"></div>
+                    </div>`;
+                board.appendChild(col);
+                return;
+            }
+
+            const dayTasks = tasks
+                .filter(t => t.day === day.iso)
+                .sort((a, b) => {
+                    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                    return priScore(a.priority) - priScore(b.priority);
+                });
+            const incomplete = dayTasks.filter(t => !t.completed).length;
+
             col.innerHTML = `
                 <div class="day-header">
+                    ${day.isToday ? '<span class="today-badge">Today</span>' : ''}
                     ${day.label}
                     <span class="task-count">${incomplete > 0 ? `· ${incomplete} left` : ''}</span>
                 </div>
-                <div class="tasks">${dayTasks.map(t => renderTask(t)).join('')}</div>
-                ${active ? `<button class="add-task-btn" onclick="openAddTask('${day.iso}')">+ Add Task</button>` : ''}
-            `;
+                <div class="tasks">
+                    ${dayTasks.map(t => renderTask(t)).join('')}
+                    ${active && !dayTasks.length ? '<div class="empty-col">No tasks yet</div>' : ''}
+                    ${active ? `<button class="add-task-btn" onclick="openAddTask('${day.iso}')">+ Add Task</button>` : ''}
+                </div>`;
             board.appendChild(col);
         });
     }
@@ -1316,7 +1393,7 @@
             group.addEventListener('dragover', e => e.preventDefault());
             group.addEventListener('drop', async e => {
                 e.preventDefault();
-                if (dragTaskId) { await updateTask(dragTaskId, { day: day.iso, completed: false }); await refresh(); }
+                if (dragTaskId) { await updateTask(dragTaskId, { day: day.iso, completed: false }); showToast(`✓ Task moved to ${weekdayName}`); await refresh(); }
             });
 
             const header = document.createElement('div');
@@ -1515,11 +1592,16 @@
 
     async function toggleTask(id, checked) {
         await updateTask(id, { completed: checked });
+        showToast(checked ? '✓ Task completed' : '✓ Task reopened');
         await refresh();
     }
 
     async function confirmDelete(id) {
-        if (confirm('Delete this task?')) { await deleteTask(id); await refresh(); }
+        if (confirm('Delete this task?')) {
+            await deleteTask(id);
+            showToast('✓ Task deleted');
+            await refresh();
+        }
     }
 
     async function moveYesterdayTasks() {
@@ -1607,8 +1689,10 @@
                 await syncModalSubtasks(created.id);
             }
         }
+        const wasEditing = !!editingTaskId;
         closeModal();
         if (recurrence !== 'none') await generateRecurringTasks();
+        showToast(wasEditing ? '✓ Task updated' : '✓ Task added');
         await refresh();
     }
 
@@ -1836,7 +1920,7 @@ Generate a clean, professional report. Fix any grammar or punctuation issues. Do
         const text = format === 'text'
             ? currentReportContent.replace(/#{1,6}\s*/g, '').replace(/\*\*/g, '').replace(/^\*\s/gm, '- ')
             : currentReportContent;
-        try { await navigator.clipboard.writeText(text); } catch(e) { prompt('Copy this report:', text); }
+        try { await navigator.clipboard.writeText(text); showToast('✓ Copied to clipboard'); } catch(e) { prompt('Copy this report:', text); }
     }
 
     function checkReportCadence() {
@@ -1920,6 +2004,7 @@ Generate a clean, professional report. Fix any grammar or punctuation issues. Do
     async function deleteNote() {
         if (!activeNoteId || !confirm('Delete this note?')) return;
         await deleteNoteDb(activeNoteId);
+        showToast('✓ Note deleted');
         activeNoteId = null;
         document.getElementById('note-editor').classList.remove('visible');
         await loadNotes(); renderNotes();
@@ -1936,6 +2021,7 @@ Generate a clean, professional report. Fix any grammar or punctuation issues. Do
                 content: document.getElementById('note-content').value,
                 meeting_date: document.getElementById('note-date-input').value
             });
+            showToast('✓ Note saved');
             await loadNotes(); renderNotes();
         }, 800);
     }
@@ -2062,14 +2148,10 @@ ${dayLines}`;
             await refresh();
 
             input.value = '';
-            const [, m, d] = parsed.day.split('-');
             const label = parsed.day === todayIso() ? 'Today'
                 : parsed.day === (() => { const t=new Date(); t.setDate(t.getDate()+1); return localIso(t); })() ? 'Tomorrow'
                 : new Date(parsed.day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' });
-            const fb = document.getElementById('nl-feedback');
-            fb.textContent = `✓ Task added to ${label}`;
-            fb.style.opacity = '1';
-            setTimeout(() => { fb.style.opacity = '0'; }, 2000);
+            showToast(`✓ Task added to ${label}`);
         } catch(e) {
             fallback();
         } finally {
@@ -2113,8 +2195,11 @@ ${dayLines}`;
     // ── Init ──────────────────────────────────────────────────────────────────
 
     async function refresh() {
+        isLoading = true;
+        if (viewMode === 'board') renderBoard();
         await loadTasks();
         await loadAllSubtasks(tasks.map(t => t.id));
+        isLoading = false;
         render();
     }
 
@@ -2124,5 +2209,6 @@ ${dayLines}`;
 
     applyTheme();
 </script>
+<div id="toast-container"></div>
 </body>
 </html>
