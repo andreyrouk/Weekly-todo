@@ -882,10 +882,6 @@
         <div>
             <label class="settings-label">📊 Report Settings</label>
             <div style="display:flex; flex-direction:column; gap:10px;">
-                <div>
-                    <label class="settings-sublabel">Anthropic API Key</label>
-                    <input type="password" id="report-api-key" class="settings-input" placeholder="sk-ant-…" autocomplete="off">
-                </div>
                 <div style="display:flex; gap:8px;">
                     <div style="flex:1;">
                         <label class="settings-sublabel">Report Day</label>
@@ -1808,7 +1804,6 @@
         document.getElementById('report-tone-input').value = reportSettings.tone;
         document.getElementById('report-format-input').value = reportSettings.format;
         document.getElementById('report-template-input').value = reportSettings.template;
-        document.getElementById('report-api-key').value = localStorage.getItem('report_api_key') || '';
         renderReportHistory();
         document.getElementById('settings-modal').classList.remove('hidden');
     }
@@ -1893,8 +1888,6 @@
         };
         reportSettings = { ...s };
         try { await sb.from('report_settings').upsert(s, { onConflict: 'user_id' }); } catch(e) {}
-        const apiKey = document.getElementById('report-api-key').value.trim();
-        if (apiKey) localStorage.setItem('report_api_key', apiKey);
     }
 
     async function loadReportHistory() {
@@ -1934,9 +1927,6 @@
         currentReportWeekOffset = weekOff;
         document.getElementById('report-week-modal').classList.add('hidden');
 
-        const apiKey = localStorage.getItem('report_api_key') || '';
-        if (!apiKey) { alert('Please add your Anthropic API key in Report Settings first.'); return; }
-
         // Compute days for the chosen week without changing the board's weekOffset
         const savedOffset = weekOffset;
         weekOffset = weekOff;
@@ -1975,19 +1965,16 @@ ${taskList}
 Generate a clean, professional report. Fix any grammar or punctuation issues. Do not include trivial tasks.`;
 
         try {
-            const resp = await fetch('https://api.anthropic.com/v1/messages', {
+            const session = await sb.auth.getSession();
+            const token = session.data.session?.access_token || '';
+            const resp = await fetch('https://xcjxybjvdamchmcmjrpp.supabase.co/functions/v1/ai-proxy', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': apiKey,
-                    'anthropic-version': '2023-06-01',
-                    'anthropic-dangerous-direct-browser-access': 'true'
-                },
-                body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ type: 'report', payload: { messages: [{ role: 'user', content: prompt }] } })
             });
             const json = await resp.json();
-            if (!resp.ok) throw new Error(json.error?.message || `API error ${resp.status}`);
-            currentReportContent = json.content?.[0]?.text || '';
+            if (!resp.ok || json.error) throw new Error(json.error || `Error ${resp.status}`);
+            currentReportContent = json.result || '';
         } catch(e) {
             document.getElementById('report-modal').classList.add('hidden');
             alert('Error generating report: ' + e.message);
@@ -2039,7 +2026,7 @@ Generate a clean, professional report. Fix any grammar or punctuation issues. Do
 
     function openSettingsToReport() {
         openSettings();
-        setTimeout(() => document.getElementById('report-api-key').scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+        setTimeout(() => document.getElementById('report-day-input').scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
     }
 
     // ── Theme ─────────────────────────────────────────────────────────────────
@@ -2167,7 +2154,6 @@ Generate a clean, professional report. Fix any grammar or punctuation issues. Do
         const text  = input.value.trim();
         if (!text) return;
 
-        const apiKey = localStorage.getItem('report_api_key') || '';
         const fallback = () => {
             addingToDay = todayIso(); editingTaskId = null;
             document.getElementById('modal-title').textContent = 'Add Task';
@@ -2180,8 +2166,6 @@ Generate a clean, professional report. Fix any grammar or punctuation issues. Do
             setTimeout(() => document.getElementById('task-title-input').focus(), 50);
             input.value = '';
         };
-
-        if (!apiKey) { fallback(); return; }
 
         const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
         const _base = new Date(); _base.setHours(0,0,0,0);
@@ -2214,24 +2198,16 @@ ${dayLines}`;
         document.getElementById('nl-submit').disabled = true;
 
         try {
-            const resp = await fetch('https://api.anthropic.com/v1/messages', {
+            const session = await sb.auth.getSession();
+            const token = session.data.session?.access_token || '';
+            const resp = await fetch('https://xcjxybjvdamchmcmjrpp.supabase.co/functions/v1/ai-proxy', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': apiKey,
-                    'anthropic-version': '2023-06-01',
-                    'anthropic-dangerous-direct-browser-access': 'true'
-                },
-                body: JSON.stringify({
-                    model: 'claude-sonnet-4-20250514',
-                    max_tokens: 200,
-                    system: systemPrompt,
-                    messages: [{ role: 'user', content: text }]
-                })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ type: 'nlp', payload: { system: systemPrompt, messages: [{ role: 'user', content: text }] } })
             });
             const json = await resp.json();
-            if (!resp.ok) throw new Error('api');
-            const parsed = JSON.parse(json.content?.[0]?.text || '');
+            if (!resp.ok || json.error) throw new Error('api');
+            const parsed = JSON.parse(json.result || '');
             if (!parsed.title || !parsed.day) throw new Error('parse');
 
             await createTask({
