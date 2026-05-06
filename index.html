@@ -1201,15 +1201,31 @@
     </div>
 </div>
 
-<!-- Report Week Selector Modal -->
+<!-- Report Date Range Modal -->
 <div id="report-week-modal" class="modal-overlay hidden">
-    <div class="modal" style="width:300px;">
-        <h2>Select Week</h2>
-        <p style="font-size:13px; color:#aaa; margin-bottom:4px;">Which week's tasks to include?</p>
-        <div class="modal-btns" style="flex-direction:column; gap:8px;">
-            <button class="btn-primary" style="width:100%;" onclick="generateReport(0)">Current Week</button>
-            <button class="btn-secondary" style="width:100%;" onclick="generateReport(-1)">Last Week</button>
-            <button class="btn-secondary" style="width:100%;" onclick="closeWeekModal()">Cancel</button>
+    <div class="modal" style="width:360px; max-width:95vw;">
+        <h2>Select Date Range</h2>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="btn-secondary" style="font-size:12px; padding:5px 10px;" onclick="setReportPreset('last7')">Last 7 days</button>
+                <button class="btn-secondary" style="font-size:12px; padding:5px 10px;" onclick="setReportPreset('last14')">Last 14 days</button>
+                <button class="btn-secondary" style="font-size:12px; padding:5px 10px;" onclick="setReportPreset('thisWeek')">This week</button>
+                <button class="btn-secondary" style="font-size:12px; padding:5px 10px;" onclick="setReportPreset('lastWeek')">Last week</button>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;">
+                    <label class="settings-sublabel">From</label>
+                    <input type="date" id="report-start-date" class="settings-input" style="padding:7px 8px;">
+                </div>
+                <div style="flex:1;">
+                    <label class="settings-sublabel">To</label>
+                    <input type="date" id="report-end-date" class="settings-input" style="padding:7px 8px;">
+                </div>
+            </div>
+        </div>
+        <div class="modal-btns" style="margin-top:4px;">
+            <button class="btn-secondary" onclick="closeWeekModal()">Cancel</button>
+            <button class="btn-primary" onclick="generateReportFromModal()">Generate</button>
         </div>
     </div>
 </div>
@@ -1262,7 +1278,8 @@
     let reportHistory        = [];
     let reportBannerDismissed = false;
     let currentReportContent = '';
-    let currentReportWeekOffset = 0;
+    let currentReportStart = '';
+    let currentReportEnd   = '';
     let currentTab           = 'tasks';
     let sidebarCollapsed     = localStorage.getItem('sidebarCollapsed') === 'true';
 
@@ -2227,25 +2244,60 @@
         document.getElementById('report-modal').classList.remove('hidden');
     }
 
+    function setReportPreset(preset) {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        let start, end;
+        const dow = today.getDay(); // 0=Sun
+        const toMonday = dow === 0 ? -6 : 1 - dow;
+        if (preset === 'last7') {
+            end   = new Date(today); end.setDate(today.getDate() - 1);
+            start = new Date(today); start.setDate(today.getDate() - 7);
+        } else if (preset === 'last14') {
+            end   = new Date(today); end.setDate(today.getDate() - 1);
+            start = new Date(today); start.setDate(today.getDate() - 14);
+        } else if (preset === 'thisWeek') {
+            start = new Date(today); start.setDate(today.getDate() + toMonday);
+            end   = new Date(start);  end.setDate(start.getDate() + 6);
+        } else if (preset === 'lastWeek') {
+            const thisMonday = new Date(today); thisMonday.setDate(today.getDate() + toMonday);
+            start = new Date(thisMonday); start.setDate(thisMonday.getDate() - 7);
+            end   = new Date(thisMonday); end.setDate(thisMonday.getDate() - 1);
+        }
+        document.getElementById('report-start-date').value = localIso(start);
+        document.getElementById('report-end-date').value   = localIso(end);
+    }
+
+    function generateReportFromModal() {
+        const start = document.getElementById('report-start-date').value;
+        const end   = document.getElementById('report-end-date').value;
+        if (!start || !end) { showToast('Please select a start and end date.'); return; }
+        if (start > end)    { showToast('Start date must be before end date.'); return; }
+        generateReport(start, end);
+    }
+
     function openGenerateReport(regenerate = false) {
         saveReportSettings().catch(() => {});
-        if (regenerate) { generateReport(currentReportWeekOffset); return; }
+        if (regenerate && currentReportStart && currentReportEnd) {
+            generateReport(currentReportStart, currentReportEnd);
+            return;
+        }
+        setReportPreset('last7');
         document.getElementById('report-week-modal').classList.remove('hidden');
     }
 
-    async function generateReport(weekOff) {
-        currentReportWeekOffset = weekOff;
+    async function generateReport(startIso, endIso) {
+        currentReportStart = startIso;
+        currentReportEnd   = endIso;
         document.getElementById('report-week-modal').classList.add('hidden');
 
-        // Compute days for the chosen week without changing the board's weekOffset
-        const savedOffset = weekOffset;
-        weekOffset = weekOff;
-        const days = getWeekDays();
-        weekOffset = savedOffset;
+        // Build every date in the range
+        const isos = [];
+        const cur = new Date(startIso + 'T00:00:00');
+        const last = new Date(endIso + 'T00:00:00');
+        while (cur <= last) { isos.push(localIso(cur)); cur.setDate(cur.getDate() + 1); }
 
-        const weekStart = days[0].iso;
-        const weekEnd   = days[days.length - 1].iso;
-        const isos = days.map(d => d.iso);
+        const weekStart = startIso;
+        const weekEnd   = endIso;
 
         let weekTasks = [];
         try {
